@@ -1,0 +1,73 @@
+# ============================================================
+#  Serenity — Configuração de Segurança Apache
+# ============================================================
+
+# ─── Oculta versão do Apache e Desabilita listagem ──────────
+ServerSignature Off
+Options -Indexes
+
+# ─── Bloqueia acesso direto a arquivos sensíveis ────────────
+# Usando a sintaxe moderna do Apache 2.4
+<FilesMatch "(^\.|env|gitignore|json|lock|schema\.sql|README\.md|composer\.json)$">
+    Require all denied
+</FilesMatch>
+
+# ─── Bloqueia acesso à pasta /data/ inteiramente ────────────
+# Substitui o <Directory> que causaria Erro 500 no .htaccess
+RedirectMatch 403 ^/data/?(.*)$
+RedirectMatch 403 ^/backups/?(.*)$
+
+# ─── HTTPS em produção ───────────────────────────────────
+# Mantém localhost/XAMPP funcionando em HTTP, mas força HTTPS em domínios reais.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# ─── Headers de Segurança HTTP ──────────────────────────────
+<IfModule mod_headers.c>
+    # Impede clickjacking
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Impede MIME sniffing
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Ativa proteção XSS do navegador (legado, mas ainda útil)
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Política de referência
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Restringe recursos do browser
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+    # Content Security Policy — restringe fontes de script/estilo
+    # CSP gerenciada via PHP (index.php) com nonce por requisicao — veja index.php
+
+    # Remove headers que revelam o framework
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+</IfModule>
+
+# ─── Compressão ─────────────────────────────────────────────
+<IfModule mod_deflate.c>
+    # Adicionado suporte a xml e plain text para maior abrangência
+    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json application/xml image/svg+xml
+</IfModule>
+
+# ─── Cache de assets estáticos ──────────────────────────────
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                  "access plus 1 month"
+    ExpiresByType application/javascript    "access plus 1 month"
+    ExpiresByType image/png                 "access plus 1 month"
+    ExpiresByType image/jpeg                "access plus 1 month"
+    # Adicionado cache para SVG e WebP (formatos modernos)
+    ExpiresByType image/svg+xml             "access plus 1 month"
+    ExpiresByType image/webp                "access plus 1 month"
+    # Ícones costumam mudar pouco, cache de 1 ano
+    ExpiresByType image/x-icon              "access plus 1 year"
+    ExpiresByType text/html                 "access plus 0 seconds"
+</IfModule>
