@@ -28,19 +28,22 @@ require_once APP_PATH . '/views/templates/header.php';
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <small class="form-text">Escolha um cliente cadastrado para usar o perfil e preco correto.</small>
                                 </div>
                                 <div class="form-group">
                                     <label for="customer_name" class="form-label">Nome livre</label>
                                     <input type="text" id="customer_name" name="customer_name" class="form-control" placeholder="Use para cliente nao cadastrado">
+                                    <small class="form-text">Opcional. Preencha quando o cliente ainda nao estiver no cadastro.</small>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label for="quotation_product_search" class="form-label">Adicionar produto</label>
-                                <input type="text" id="quotation_product_search" class="form-control" placeholder="Nome ou SKU">
+                                <input type="text" id="quotation_product_search" class="form-control" placeholder="Nome ou codigo de barras">
+                                <small class="form-text">Busque pelo nome ou codigo de barras e clique no produto para adicionar.</small>
                                 <div id="quotation_search_results" class="pos-search-results"></div>
                             </div>
                             <div class="table-container">
-                                <table class="table" id="quotation-table">
+                                <table class="table commerce-table" id="quotation-table">
                                     <thead><tr><th>Produto</th><th>Qtd.</th><th>Preco</th><th>Total</th><th></th></tr></thead>
                                     <tbody><tr><td colspan="5" class="text-center">Nenhum item adicionado.</td></tr></tbody>
                                 </table>
@@ -48,22 +51,8 @@ require_once APP_PATH . '/views/templates/header.php';
                             <div class="form-group">
                                 <label for="notes" class="form-label">Observacoes</label>
                                 <textarea id="notes" name="notes" class="form-control" rows="2"></textarea>
+                                <small class="form-text">Opcional. Aparece no historico do orcamento.</small>
                             </div>
-                            <div class="form-section-title">Autorizacao de desconto</div>
-                            <div class="form-grid-2col">
-                                <div class="form-group">
-                                    <label for="approval_email" class="form-label">Email autorizador</label>
-                                    <input type="email" id="approval_email" name="approval_email" class="form-control" autocomplete="username">
-                                </div>
-                                <div class="form-group">
-                                    <label for="approval_password" class="form-label">Senha autorizador</label>
-                                    <input type="password" id="approval_password" name="approval_password" class="form-control" autocomplete="current-password">
-                                </div>
-                            </div>
-                            <label class="checkbox-row">
-                                <input type="checkbox" name="confirm_below_cost" value="1">
-                                <span>Confirmar orcamento abaixo do custo quando autorizado</span>
-                            </label>
                         </div>
                     </section>
                     <aside class="card">
@@ -72,6 +61,7 @@ require_once APP_PATH . '/views/templates/header.php';
                             <div class="form-group">
                                 <label for="overall_discount" class="form-label">Desconto total</label>
                                 <input type="number" id="quotation_overall_discount" name="overall_discount" class="form-control" min="0" step="0.01" value="0.00">
+                                <small class="form-text">Desconto em reais aplicado ao total do orcamento.</small>
                             </div>
                             <div class="detail-grid">
                                 <div><strong>Subtotal</strong><span id="quotation_subtotal"><?php echo formatMoney(0); ?></span></div>
@@ -88,7 +78,7 @@ require_once APP_PATH . '/views/templates/header.php';
     </main>
 </div>
 
-<script nonce="<?php echo $cspNonce ?? ''; ?>">
+<script nonce="<?php echo htmlspecialchars(defined('CSP_NONCE') ? CSP_NONCE : '', ENT_QUOTES, 'UTF-8'); ?>">
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('quotation_product_search');
     const resultsBox = document.getElementById('quotation_search_results');
@@ -125,11 +115,11 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             tableBody.innerHTML = items.map((item, index) => `
                 <tr>
-                    <td><strong>${escapeHtml(item.name)}</strong><small class="muted-line">${escapeHtml(item.sku)}</small></td>
-                    <td><input type="number" min="0.001" step="0.001" class="form-control" data-index="${index}" data-field="quantity" value="${item.quantity}"></td>
-                    <td><input type="number" min="0" step="0.01" class="form-control" data-index="${index}" data-field="unit_price" value="${item.unit_price.toFixed(2)}" readonly></td>
-                    <td>${formatMoney(item.quantity * item.unit_price)}</td>
-                    <td><button type="button" class="btn btn-sm btn-danger" data-remove="${index}">Remover</button></td>
+                    <td data-label="Produto" class="item-product-cell"><strong>${escapeHtml(item.name)}</strong><small class="muted-line">${escapeHtml(item.barcode)}</small></td>
+                    <td data-label="Qtd." class="item-quantity-cell"><input type="number" min="0.001" step="0.001" class="form-control" data-index="${index}" data-field="quantity" value="${item.quantity}"></td>
+                    <td data-label="Preco" class="item-money-cell"><input type="number" min="0" step="0.01" class="form-control" data-index="${index}" data-field="unit_price" value="${item.unit_price.toFixed(2)}" readonly></td>
+                    <td data-label="Total" class="item-total-cell">${formatMoney(item.quantity * item.unit_price)}</td>
+                    <td data-label="Acao" class="item-action-cell"><button type="button" class="btn btn-sm btn-danger" data-remove="${index}">Remover</button></td>
                 </tr>
             `).join('');
         }
@@ -162,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             items.push({
                 product_id: Number(product.id),
-                sku: product.sku,
+                barcode: product.barcode,
                 name: product.name,
                 quantity: 1,
                 unit_price: price,
@@ -175,23 +165,50 @@ document.addEventListener('DOMContentLoaded', function () {
         resultsBox.innerHTML = '';
     }
 
+    function showSearchMessage(message, type = 'info') {
+        resultsBox.innerHTML = `<div class="pos-search-message pos-search-message-${type}">${escapeHtml(message)}</div>`;
+    }
+
+    async function fetchProducts(query) {
+        try {
+            const response = await fetch('index.php?page=products&action=search&q=' + encodeURIComponent(query), {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            const products = await response.json();
+            renderResults(Array.isArray(products) ? products : []);
+        } catch (error) {
+            showSearchMessage('Nao foi possivel buscar produtos. Recarregue a pagina e tente novamente.', 'error');
+        }
+    }
+
+    function renderResults(products) {
+        if (!products.length) {
+            showSearchMessage('Nenhum produto encontrado para esta busca.', 'empty');
+            return;
+        }
+        resultsBox.innerHTML = products.map(product => `
+            <button type="button" class="pos-result" data-product="${encodeURIComponent(JSON.stringify(product))}">
+                <strong>${escapeHtml(product.name)}</strong>
+                <small class="muted-line">${escapeHtml(product.barcode)} | ${formatMoney(customerType() === 'professional' && product.wholesale_price ? parseFloat(product.wholesale_price) : parseFloat(product.sale_price))}</small>
+            </button>
+        `).join('');
+    }
+
     searchInput.addEventListener('input', function () {
         clearTimeout(timer);
         const query = searchInput.value.trim();
-        if (query.length < 2) {
-            resultsBox.innerHTML = '';
-            return;
-        }
         timer = setTimeout(async function () {
-            const response = await fetch('index.php?page=products&action=search&q=' + encodeURIComponent(query));
-            const products = await response.json();
-            resultsBox.innerHTML = products.map(product => `
-                <button type="button" class="pos-result" data-product="${encodeURIComponent(JSON.stringify(product))}">
-                    <strong>${escapeHtml(product.name)}</strong>
-                    <small class="muted-line">${escapeHtml(product.sku)} | ${formatMoney(customerType() === 'professional' && product.wholesale_price ? parseFloat(product.wholesale_price) : parseFloat(product.sale_price))}</small>
-                </button>
-            `).join('');
+            await fetchProducts(query);
         }, 250);
+    });
+
+    searchInput.addEventListener('focus', function () {
+        if (searchInput.value.trim() === '' && resultsBox.innerHTML.trim() === '') {
+            fetchProducts('');
+        }
     });
 
     resultsBox.addEventListener('click', function (event) {
@@ -228,6 +245,7 @@ document.addEventListener('DOMContentLoaded', function () {
         itemsInput.value = JSON.stringify(items);
     });
     renderItems();
+    fetchProducts('');
 });
 </script>
 

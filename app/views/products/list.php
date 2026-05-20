@@ -24,7 +24,7 @@ require_once APP_PATH . '/views/templates/header.php';
                         <div class="form-group mb-0">
                             <label for="search" class="form-label">Pesquisar</label>
                             <input type="text" id="search" name="search" class="form-control"
-                                   placeholder="Nome, SKU ou marca"
+                                   placeholder="Nome, codigo de barras ou marca"
                                    value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>">
                         </div>
 
@@ -56,8 +56,8 @@ require_once APP_PATH . '/views/templates/header.php';
                             <label for="stock_alert" class="form-label">Alerta</label>
                             <select id="stock_alert" name="stock_alert" class="form-control">
                                 <option value="">Todos</option>
-                                <option value="low" <?php echo ($_GET['stock_alert'] ?? '') === 'low' ? 'selected' : ''; ?>>Estoque baixo</option>
-                                <option value="critical" <?php echo ($_GET['stock_alert'] ?? '') === 'critical' ? 'selected' : ''; ?>>Critico</option>
+                                <option value="low" <?php echo ($_GET['stock_alert'] ?? '') === 'low' ? 'selected' : ''; ?>>Para reposicao</option>
+                                <option value="critical" <?php echo ($_GET['stock_alert'] ?? '') === 'critical' ? 'selected' : ''; ?>>Abaixo do minimo</option>
                             </select>
                         </div>
                     </div>
@@ -83,7 +83,7 @@ require_once APP_PATH . '/views/templates/header.php';
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>SKU</th>
+                                        <th>Codigo de barras</th>
                                         <th>Produto</th>
                                         <th>Categoria</th>
                                         <th>Un.</th>
@@ -113,9 +113,6 @@ require_once APP_PATH . '/views/templates/header.php';
                                             </td>
                                             <td>
                                                 <?php echo htmlspecialchars($product['category_name'] ?? '-'); ?>
-                                                <?php if (!empty($product['subcategory_name'])): ?>
-                                                    <small class="muted-line"><?php echo htmlspecialchars($product['subcategory_name']); ?></small>
-                                                <?php endif; ?>
                                             </td>
                                             <td><?php echo htmlspecialchars($product['unit_of_measure'] ?? 'UN'); ?></td>
                                             <td><?php echo formatMoney((float) $product['sale_price']); ?></td>

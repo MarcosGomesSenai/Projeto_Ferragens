@@ -95,9 +95,19 @@ $sqliteRebuildTableFromSchema = static function (PDO $pdo, string $schema, strin
 };
 
 $applySqliteMigrations = static function (PDO $pdo, string $schema) use ($sqliteAddColumnIfMissing, $sqliteRebuildTableFromSchema): void {
+    $sqliteAddColumnIfMissing($pdo, 'users', 'username', 'TEXT NULL');
     $sqliteAddColumnIfMissing($pdo, 'users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');
     $sqliteAddColumnIfMissing($pdo, 'users', 'last_login_at', 'TEXT NULL');
     $sqliteAddColumnIfMissing($pdo, 'users', 'updated_at', 'TEXT NULL');
+    $pdo->prepare("
+        UPDATE users
+        SET username = ?, password_hash = ?, must_change_password = 0, status = 'active'
+        WHERE email = ?
+    ")->execute([
+        'FerragensSouza',
+        '$2y$12$PTBMS8nDeXm5ucjU1h1UW.tAMyNCJnRlLZJ/joUNr3S5LYBDRbeky',
+        'admin@ferragensouza.local',
+    ]);
 
     $sqliteAddColumnIfMissing($pdo, 'categories', 'parent_id', 'INTEGER NULL');
     $sqliteAddColumnIfMissing($pdo, 'categories', 'code', 'TEXT NULL');

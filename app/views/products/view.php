@@ -21,11 +21,11 @@ $stockLevel = productStockAlertLevel($product);
         <div class="content-area">
             <?php if ($stockLevel === 'critical'): ?>
                 <div class="alert alert-error">
-                    Estoque critico. Disponivel: <?php echo formatQuantity($product['quantity']); ?>.
+                    Produto abaixo do estoque minimo. Disponivel: <?php echo formatQuantity($product['quantity']); ?>.
                 </div>
             <?php elseif ($stockLevel === 'low'): ?>
                 <div class="alert alert-warning">
-                    Estoque baixo. Disponivel: <?php echo formatQuantity($product['quantity']); ?>.
+                    Produto abaixo do ponto de reposicao. Disponivel: <?php echo formatQuantity($product['quantity']); ?>.
                 </div>
             <?php endif; ?>
 
@@ -38,7 +38,7 @@ $stockLevel = productStockAlertLevel($product);
                 </div>
                 <div class="card-body">
                     <div class="detail-grid">
-                        <div><strong>SKU</strong><span><?php echo htmlspecialchars($product['sku']); ?></span></div>
+                        <div><strong>Codigo de barras</strong><span><?php echo htmlspecialchars($product['sku']); ?></span></div>
                         <div><strong>Marca</strong><span><?php echo htmlspecialchars($product['brand'] ?? '-'); ?></span></div>
                         <div><strong>Categoria</strong><span><?php echo htmlspecialchars($product['category_name'] ?? '-'); ?></span></div>
                         <div><strong>Subcategoria</strong><span><?php echo htmlspecialchars($product['subcategory_name'] ?? '-'); ?></span></div>
@@ -68,7 +68,7 @@ $stockLevel = productStockAlertLevel($product);
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">Historico de Movimentacoes</h3>
-                    <a href="index.php?page=stock&action=adjustment" class="btn btn-sm btn-outline">Ajustar Estoque</a>
+                    <a href="index.php?page=stock&action=adjustment" class="btn btn-sm btn-outline">Nova Movimentacao</a>
                 </div>
                 <div class="card-body">
                     <?php if (empty($productMovements)): ?>
@@ -93,7 +93,7 @@ $stockLevel = productStockAlertLevel($product);
                                         <tr>
                                             <td><?php echo formatDate($movement['date']); ?></td>
                                             <td><?php echo STOCK_MOVEMENT_TYPES[$movement['type']] ?? htmlspecialchars($movement['type']); ?></td>
-                                            <td><?php echo formatQuantity($movement['quantity']); ?></td>
+                                            <td><?php echo formatStockMovementQuantity($movement); ?></td>
                                             <td><?php echo formatQuantity($movement['old_quantity']); ?></td>
                                             <td><?php echo formatQuantity($movement['new_quantity']); ?></td>
                                             <td><?php echo htmlspecialchars($movement['invoice_number'] ?? ($movement['reason'] ?? '-')); ?></td>
@@ -105,8 +105,7 @@ $stockLevel = productStockAlertLevel($product);
                                                         <input type="hidden" name="id" value="<?php echo (int) $movement['id']; ?>">
                                                         <input type="hidden" name="return" value="view">
                                                         <input type="hidden" name="product_id" value="<?php echo (int) $product['id']; ?>">
-                                                        <input type="password" name="reauth_password" class="form-control" placeholder="Senha" autocomplete="current-password" required>
-                                                        <button type="submit" class="btn btn-sm btn-danger" data-confirm="Reverter somente e permitido se esta for a ultima movimentacao do produto. Continuar?">Reverter</button>
+                                                        <button type="submit" class="btn btn-sm btn-danger" data-confirm="Remover esta movimentacao? O estoque voltara ao saldo anterior. So e permitido se ela for a ultima alteracao do produto.">Remover</button>
                                                     </form>
                                                 <?php else: ?>
                                                     -

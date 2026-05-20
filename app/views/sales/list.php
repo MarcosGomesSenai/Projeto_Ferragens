@@ -1,12 +1,12 @@
 <?php
-$pageTitle = 'Vendas';
+$pageTitle = 'Historico de Vendas';
 require_once APP_PATH . '/views/templates/header.php';
 ?>
 <div class="app-container">
     <?php require_once APP_PATH . '/views/templates/navigation.php'; ?>
     <main class="main-content">
         <header class="topbar">
-            <div class="topbar-left"><h1 class="topbar-title">Vendas</h1></div>
+            <div class="topbar-left"><h1 class="topbar-title">Historico de Vendas</h1></div>
             <div class="topbar-right"><a href="index.php?page=pos" class="btn btn-primary">Nova Venda</a></div>
         </header>
         <div class="content-area">

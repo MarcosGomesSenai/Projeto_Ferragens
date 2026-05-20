@@ -14,7 +14,7 @@ class UserController {
         Security::checkPermissions('admin');
 
         $users = $this->pdo->query("
-            SELECT id, name, email, role, status, created_at, last_login_at
+            SELECT id, name, username, email, role, status, created_at, last_login_at
             FROM users
             ORDER BY name ASC
         ")->fetchAll();

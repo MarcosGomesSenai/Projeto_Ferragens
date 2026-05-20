@@ -80,11 +80,11 @@ class DashboardController {
             FROM products
             WHERE status = 'active'
               AND (
-                  (reorder_point > 0 AND quantity <= reorder_point)
-                  OR (reorder_point <= 0 AND quantity <= min_quantity)
+                  (min_quantity > 0 AND quantity < min_quantity)
+                  OR (reorder_point > 0 AND quantity < reorder_point)
               )
         ");
-        $stats['critical_stock_count'] = (int) $this->scalar('SELECT COUNT(*) FROM products WHERE status = "active" AND quantity <= ?', [CRITICAL_STOCK_THRESHOLD]);
+        $stats['critical_stock_count'] = (int) $this->scalar('SELECT COUNT(*) FROM products WHERE status = "active" AND min_quantity > 0 AND quantity < min_quantity');
         $stats['payables_7_days'] = (float) $this->scalar("
             SELECT COALESCE(SUM(amount - paid_amount), 0)
             FROM accounts_payable
@@ -98,19 +98,30 @@ class DashboardController {
               AND status IN ('open','partial')
               AND due_date < ?
         ", [$today]);
+        $inventoryTotals = $this->query("
+            SELECT COALESCE(SUM(cost_price * quantity), 0) AS stock_cost_value,
+                   COALESCE(SUM(sale_price * quantity), 0) AS stock_sale_potential
+            FROM products
+            WHERE status = 'active'
+        ");
+        $stats['stock_cost_value'] = (float) ($inventoryTotals[0]['stock_cost_value'] ?? 0);
+        $stats['stock_sale_potential'] = (float) ($inventoryTotals[0]['stock_sale_potential'] ?? 0);
+        $stats['stock_potential_margin'] = $stats['stock_sale_potential'] - $stats['stock_cost_value'];
 
         $stats['low_stock_products'] = $this->query("
             SELECT p.id, p.sku, p.name, p.quantity, p.min_quantity, p.reorder_point,
+                   CASE WHEN p.reorder_point > p.min_quantity THEN p.reorder_point ELSE p.min_quantity END AS reorder_target,
                    s.name AS supplier_name
             FROM products p
             LEFT JOIN suppliers s ON p.supplier_id = s.id
             WHERE p.status = 'active'
               AND (
-                  (p.reorder_point > 0 AND p.quantity <= p.reorder_point)
-                  OR (p.reorder_point <= 0 AND p.quantity <= p.min_quantity)
+                  (p.min_quantity > 0 AND p.quantity < p.min_quantity)
+                  OR (p.reorder_point > 0 AND p.quantity < p.reorder_point)
               )
             ORDER BY
-                (CASE WHEN p.reorder_point > 0 THEN p.reorder_point ELSE p.min_quantity END - p.quantity) DESC,
+                CASE WHEN p.min_quantity > 0 AND p.quantity < p.min_quantity THEN 0 ELSE 1 END ASC,
+                (CASE WHEN p.reorder_point > p.min_quantity THEN p.reorder_point ELSE p.min_quantity END - p.quantity) DESC,
                 p.quantity ASC
             LIMIT 10
         ");

@@ -53,9 +53,6 @@ class QuotationController {
         $notes = sanitize($_POST['notes'] ?? '');
         $overallDiscount = normalizeMoney($_POST['overall_discount'] ?? 0);
         $customer = $this->findCustomer($customerId);
-        $approvalEmail = strtolower(trim(filter_var($_POST['approval_email'] ?? '', FILTER_SANITIZE_EMAIL)));
-        $approvalPassword = $_POST['approval_password'] ?? '';
-        $confirmBelowCost = ($_POST['confirm_below_cost'] ?? '') === '1';
 
         $validatedItems = [];
         $subtotal = 0.0;
@@ -101,7 +98,7 @@ class QuotationController {
         }
         $effectiveDiscountPercent = $subtotal > 0 ? ($overallDiscount / $subtotal) * 100 : 0;
         try {
-            $this->assertDiscountAuthority($effectiveDiscountPercent, $approvalEmail, $approvalPassword);
+            $this->assertDiscountAuthority($effectiveDiscountPercent);
             // B-01: correção de rounding drift — último item absorve a diferença residual
             $baseForShare = max(0.01, $subtotal);
             $lastItemKey = array_key_last($validatedItems);
@@ -116,11 +113,8 @@ class QuotationController {
                 $finalLineTotal = round($validatedItem['line_total'] - $share, 2);
                 $minimumCost = round((float) $validatedItem['product']['cost_price'] * $validatedItem['quantity'], 2);
                 if ($finalLineTotal < $minimumCost) {
-                    if (!$this->hasAuthority('admin', $approvalEmail, $approvalPassword)) {
+                    if (!hasPermission('admin')) {
                         throw new RuntimeException('Desconto venderia item abaixo do custo.');
-                    }
-                    if (!$confirmBelowCost) {
-                        throw new RuntimeException('Orcamento abaixo do custo exige confirmacao explicita.');
                     }
                 }
             }
@@ -329,10 +323,6 @@ class QuotationController {
             setFlashMessage('error', $e->getMessage());
             redirect('quotations', ['action' => 'view', 'id' => $id]);
         }
-        $confirmBelowCost = ($_POST['confirm_below_cost'] ?? '') === '1';
-        $confirmNegativeStock = ($_POST['confirm_negative_stock'] ?? '') === '1';
-        $approvalEmail = strtolower(trim(filter_var($_POST['approval_email'] ?? '', FILTER_SANITIZE_EMAIL)));
-        $approvalPassword = $_POST['approval_password'] ?? '';
         $timestamp = dbNow();
 
         $this->pdo->beginTransaction();
@@ -364,8 +354,8 @@ class QuotationController {
                     throw new RuntimeException('Produto indisponivel: ' . $item['product_name']);
                 }
                 if ((float) $product['quantity'] < (float) $item['quantity']) {
-                    if (!$this->hasAuthority('admin', $approvalEmail, $approvalPassword) || !$confirmNegativeStock) {
-                        throw new RuntimeException('Estoque insuficiente para ' . $item['product_name'] . '. Conversao sem estoque exige autorizacao de administrador.');
+                    if (!hasPermission('admin')) {
+                        throw new RuntimeException('Estoque insuficiente para ' . $item['product_name'] . '.');
                     }
                 }
                 $discountShare = $overallDiscount > 0
@@ -377,11 +367,8 @@ class QuotationController {
                 $finalLineTotal = round((float) $item['line_total'] - $discountShare, 2);
 
                 if ($finalLineTotal < ((float) $item['cost_price'] * (float) $item['quantity'])) {
-                    if (!$this->hasAuthority('admin', $approvalEmail, $approvalPassword)) {
+                    if (!hasPermission('admin')) {
                         throw new RuntimeException('Orcamento vende item abaixo do custo: ' . $item['product_name']);
-                    }
-                    if (!$confirmBelowCost) {
-                        throw new RuntimeException('Conversao abaixo do custo exige confirmacao explicita.');
                     }
                 }
 
@@ -720,23 +707,14 @@ class QuotationController {
         return DISCOUNT_FREE_LIMIT_PERCENT;
     }
 
-    private function assertDiscountAuthority(float $discountPercent, string $approvalEmail, string $approvalPassword): void {
+    private function assertDiscountAuthority(float $discountPercent): void {
         $discountPercent = round($discountPercent, 4);
         if ($discountPercent <= $this->maxDiscountAllowed()) {
             return;
         }
 
         $requiredRole = $discountPercent > DISCOUNT_MANAGER_LIMIT_PERCENT ? 'admin' : 'manager';
-        if (!$this->hasAuthority($requiredRole, $approvalEmail, $approvalPassword)) {
-            throw new RuntimeException('Desconto acima da alcada exige autorizacao de ' . ($requiredRole === 'admin' ? 'administrador.' : 'gerente.'));
-        }
-    }
-
-    private function hasAuthority(string $requiredRole, string $approvalEmail, string $approvalPassword): bool {
-        if (hasPermission($requiredRole)) {
-            return true;
-        }
-        return Security::verifyCredentialsForRole($approvalEmail, $approvalPassword, $requiredRole) !== null;
+        throw new RuntimeException('Desconto acima da alcada do seu perfil. Entre com um usuario ' . ($requiredRole === 'admin' ? 'administrador' : 'gerente') . ' para aplicar esse desconto.');
     }
 
     private function generateSaleNumber(): string {

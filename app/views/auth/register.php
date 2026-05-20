@@ -26,6 +26,19 @@ require_once APP_PATH . '/views/templates/header.php';
             </div>
 
             <div class="form-group">
+                <label for="username" class="form-label required">Usuario</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    class="form-control"
+                    placeholder="Ex.: FerragensSouza"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+
+            <div class="form-group">
                 <label for="email" class="form-label required">Email</label>
                 <input
                     type="email"

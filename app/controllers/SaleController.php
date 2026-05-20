@@ -86,11 +86,6 @@ class SaleController {
             setFlashMessage('error', 'Informe o motivo do cancelamento.');
             redirect('sales', ['action' => 'view', 'id' => $id]);
         }
-        if (!Security::verifyCurrentPassword($_POST['reauth_password'] ?? '')) {
-            setFlashMessage('error', 'Senha de confirmacao invalida.');
-            redirect('sales', ['action' => 'view', 'id' => $id]);
-        }
-
         $this->pdo->beginTransaction();
         try {
             $itemsStmt = $this->pdo->prepare('SELECT * FROM sale_items WHERE sale_id = ?');
@@ -230,11 +225,6 @@ class SaleController {
             setFlashMessage('error', 'Destino da devolucao invalido.');
             redirect('sales', ['action' => 'view', 'id' => $saleId]);
         }
-        if (!Security::verifyCurrentPassword($_POST['reauth_password'] ?? '')) {
-            setFlashMessage('error', 'Senha de confirmacao invalida.');
-            redirect('sales', ['action' => 'view', 'id' => $saleId]);
-        }
-
         $sale = $this->findSale($saleId);
         if (!$sale || $sale['status'] !== 'completed') {
             setFlashMessage('error', 'Venda nao permite devolucao parcial.');

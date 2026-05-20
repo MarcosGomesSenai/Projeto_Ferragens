@@ -292,11 +292,11 @@ class ReportController {
 
     private function columnsForType(string $type): array {
         $definitions = [
-            'inventory' => ['Inventario valorado', ['sku' => 'SKU', 'name' => 'Produto', 'category_name' => 'Categoria', 'quantity' => 'Qtd.', 'cost_price' => 'Custo', 'stock_cost_value' => 'Valor custo', 'sale_price' => 'Venda', 'stock_sale_value' => 'Valor venda']],
-            'abc_revenue' => ['Curva ABC por faturamento', ['sku' => 'SKU', 'name' => 'Produto', 'sold_quantity' => 'Qtd.', 'revenue' => 'Faturamento', 'margin_amount' => 'Margem R$', 'abc_class' => 'ABC']],
-            'abc_margin' => ['Curva ABC por margem', ['sku' => 'SKU', 'name' => 'Produto', 'sold_quantity' => 'Qtd.', 'revenue' => 'Faturamento', 'margin_amount' => 'Margem R$', 'abc_class' => 'ABC']],
-            'turnover' => ['Giro de estoque', ['sku' => 'SKU', 'name' => 'Produto', 'category_name' => 'Categoria', 'current_stock' => 'Estoque', 'sold_quantity' => 'Vendido', 'turnover_rate' => 'Giro', 'immobilized_value' => 'Imobilizado']],
-            'losses' => ['Relatorio de perdas', ['sku' => 'SKU', 'name' => 'Produto', 'reason' => 'Motivo', 'quantity' => 'Qtd.', 'cost_value' => 'Valor custo']],
+            'inventory' => ['Inventario valorado', ['sku' => 'Codigo de barras', 'name' => 'Produto', 'category_name' => 'Categoria', 'quantity' => 'Qtd.', 'cost_price' => 'Custo', 'stock_cost_value' => 'Valor em estoque (custo)', 'sale_price' => 'Venda', 'stock_sale_value' => 'Potencial de venda']],
+            'abc_revenue' => ['Curva ABC por faturamento', ['sku' => 'Codigo de barras', 'name' => 'Produto', 'sold_quantity' => 'Qtd.', 'revenue' => 'Faturamento', 'margin_amount' => 'Margem R$', 'abc_class' => 'ABC']],
+            'abc_margin' => ['Curva ABC por margem', ['sku' => 'Codigo de barras', 'name' => 'Produto', 'sold_quantity' => 'Qtd.', 'revenue' => 'Faturamento', 'margin_amount' => 'Margem R$', 'abc_class' => 'ABC']],
+            'turnover' => ['Giro de estoque', ['sku' => 'Codigo de barras', 'name' => 'Produto', 'category_name' => 'Categoria', 'current_stock' => 'Estoque', 'sold_quantity' => 'Vendido', 'turnover_rate' => 'Giro', 'immobilized_value' => 'Imobilizado']],
+            'losses' => ['Relatorio de perdas', ['sku' => 'Codigo de barras', 'name' => 'Produto', 'reason' => 'Motivo', 'quantity' => 'Qtd.', 'cost_value' => 'Valor custo']],
         ];
         return $definitions[$type] ?? $definitions['inventory'];
     }

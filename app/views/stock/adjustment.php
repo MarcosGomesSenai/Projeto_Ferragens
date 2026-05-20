@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'Ajuste de Estoque';
+$pageTitle = 'Nova Movimentacao';
 require_once APP_PATH . '/views/templates/header.php';
 ?>
 
@@ -7,7 +7,7 @@ require_once APP_PATH . '/views/templates/header.php';
     <?php require_once APP_PATH . '/views/templates/navigation.php'; ?>
     <main class="main-content">
         <header class="topbar">
-            <div class="topbar-left"><h1 class="topbar-title">Ajuste de Estoque</h1></div>
+            <div class="topbar-left"><h1 class="topbar-title">Nova Movimentacao</h1></div>
             <div class="topbar-right"><a href="index.php?page=stock&action=movements" class="btn btn-secondary">Voltar</a></div>
         </header>
 
@@ -28,32 +28,39 @@ require_once APP_PATH . '/views/templates/header.php';
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+                            <small class="form-text">Selecione o produto que tera o estoque ajustado.</small>
                         </div>
 
                         <div class="form-grid-2col">
                             <div class="form-group">
-                                <label for="physical_quantity" class="form-label required">Quantidade fisica contada</label>
-                                <input type="number" id="physical_quantity" name="physical_quantity" class="form-control" min="0" step="0.001" required>
+                                <label for="movement_type" class="form-label required">Tipo de movimentacao</label>
+                                <select id="movement_type" name="movement_type" class="form-control" required>
+                                    <?php foreach ($movementTypes as $type => $label): ?>
+                                        <option value="<?php echo htmlspecialchars($type); ?>"><?php echo htmlspecialchars($label); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="form-text">Entrada soma no estoque. Retirada diminui do estoque.</small>
                             </div>
+                            <div class="form-group">
+                                <label for="quantity" class="form-label required" id="quantity_label">Quantidade movimentada</label>
+                                <input type="number" id="quantity" name="quantity" class="form-control" min="0" step="0.001" required>
+                                <small class="form-text" id="quantity_help">Informe quanto deve entrar no estoque.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2col">
                             <div class="form-group">
                                 <label for="reason" class="form-label required">Motivo</label>
                                 <select id="reason" name="reason" class="form-control" required>
                                     <option value="">Selecione...</option>
-                                    <?php foreach ($reasons as $reason): ?>
-                                        <option value="<?php echo htmlspecialchars($reason); ?>"><?php echo htmlspecialchars($reason); ?></option>
-                                    <?php endforeach; ?>
                                 </select>
+                                <small class="form-text">O motivo muda conforme Entrada ou Retirada.</small>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="reauth_password" class="form-label required">Confirme sua senha</label>
-                            <input type="password" id="reauth_password" name="reauth_password" class="form-control" autocomplete="current-password" required>
                         </div>
 
                         <div class="form-actions">
                             <a href="index.php?page=stock&action=movements" class="btn btn-secondary">Cancelar</a>
-                            <button type="submit" class="btn btn-success">Registrar Ajuste</button>
+                            <button type="submit" class="btn btn-success">Registrar Movimentacao</button>
                         </div>
                     </form>
                 </div>
@@ -61,5 +68,37 @@ require_once APP_PATH . '/views/templates/header.php';
         </div>
     </main>
 </div>
+
+<script nonce="<?php echo htmlspecialchars(defined('CSP_NONCE') ? CSP_NONCE : '', ENT_QUOTES, 'UTF-8'); ?>">
+document.addEventListener('DOMContentLoaded', function () {
+    const typeSelect = document.getElementById('movement_type');
+    const reasonSelect = document.getElementById('reason');
+    const quantityLabel = document.getElementById('quantity_label');
+    const quantityHelp = document.getElementById('quantity_help');
+    const reasonsByType = <?php echo json_encode($reasonsByType, JSON_UNESCAPED_UNICODE); ?>;
+
+    function refreshReasons() {
+        const selectedReasons = reasonsByType[typeSelect.value] || [];
+        reasonSelect.innerHTML = '<option value="">Selecione...</option>' + selectedReasons
+            .map(reason => `<option value="${reason}">${reason}</option>`)
+            .join('');
+    }
+
+    function refreshQuantityText() {
+        const type = typeSelect.value;
+        if (type === 'withdrawal') {
+            quantityLabel.textContent = 'Quantidade retirada';
+            quantityHelp.textContent = 'Informe quanto deve sair do estoque.';
+        } else {
+            quantityLabel.textContent = 'Quantidade de entrada';
+            quantityHelp.textContent = 'Informe quanto deve entrar no estoque.';
+        }
+        refreshReasons();
+    }
+
+    typeSelect.addEventListener('change', refreshQuantityText);
+    refreshQuantityText();
+});
+</script>
 
 <?php require_once APP_PATH . '/views/templates/footer.php'; ?>

@@ -1,6 +1,6 @@
 <tr>
     <td style="font-weight: 600;">
-        <?php echo !empty($isSubcategory) ? '&nbsp;&nbsp;&rarr; ' : ''; ?><?php echo htmlspecialchars($category['name']); ?>
+        <?php echo htmlspecialchars($category['name']); ?>
         <?php if (!empty($category['description'])): ?>
             <small class="muted-line"><?php echo htmlspecialchars($category['description']); ?></small>
         <?php endif; ?>

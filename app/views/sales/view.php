@@ -42,13 +42,10 @@ require_once APP_PATH . '/views/templates/header.php';
                             <strong>Cancelar venda</strong>
                             <form action="index.php?page=sales&action=cancel&id=<?php echo (int) $sale['id']; ?>" method="POST" data-validate>
                                 <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
+                                <input type="hidden" name="id" value="<?php echo (int) $sale['id']; ?>">
                                  <div class="form-group">
                                      <label for="reason" class="form-label required">Motivo</label>
                                      <input type="text" id="reason" name="reason" class="form-control" required>
-                                 </div>
-                                 <div class="form-group">
-                                     <label for="reauth_password" class="form-label required">Confirme sua senha</label>
-                                     <input type="password" id="reauth_password" name="reauth_password" class="form-control" autocomplete="current-password" required>
                                  </div>
                                  <div class="form-actions form-actions-left">
                                     <button type="submit" class="btn btn-danger" data-confirm="Cancelar a venda estorna estoque e lancamentos. Continuar?">Cancelar Venda</button>
@@ -111,15 +108,9 @@ require_once APP_PATH . '/views/templates/header.php';
                                         </select>
                                     </div>
                                 </div>
-                                <div class="form-grid-2col">
-                                    <div class="form-group">
-                                        <label for="return_reason" class="form-label required">Motivo</label>
-                                        <input type="text" id="return_reason" name="reason" class="form-control" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="return_password" class="form-label required">Confirme sua senha</label>
-                                        <input type="password" id="return_password" name="reauth_password" class="form-control" autocomplete="current-password" required>
-                                    </div>
+                                <div class="form-group">
+                                    <label for="return_reason" class="form-label required">Motivo</label>
+                                    <input type="text" id="return_reason" name="reason" class="form-control" required>
                                 </div>
                                 <div class="form-actions form-actions-left">
                                     <button type="submit" class="btn btn-warning" data-confirm="Registrar devolucao parcial desta venda?">Registrar devolucao</button>

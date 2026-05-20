@@ -20,10 +20,12 @@ if (!is_dir(DATA_PATH . '/audit')) {
     mkdir(DATA_PATH . '/audit', 0755, true);
 }
 
-$cspNonce = base64_encode(random_bytes(16));
+if (!defined('CSP_NONCE')) {
+    define('CSP_NONCE', base64_encode(random_bytes(16)));
+}
 
 header('X-Frame-Options: SAMEORIGIN');
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-" . $cspNonce . "'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-" . CSP_NONCE . "'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';");
 header('X-Content-Type-Options: nosniff');
 header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');

@@ -16,7 +16,7 @@ class CategoryController {
         $stmt = $this->pdo->query("
             SELECT id, parent_id, code, name, description, status
             FROM categories
-            ORDER BY parent_id ASC, name ASC
+            ORDER BY name ASC
         ");
         $categories = $stmt->fetchAll();
         $editCategory = null;
@@ -127,13 +127,8 @@ class CategoryController {
     }
 
     private function dataFromPost(?int $currentId = null): array {
-        $parentId = (int) ($_POST['parent_id'] ?? 0);
-        if ($currentId !== null && $parentId === $currentId) {
-            $parentId = 0;
-        }
-
         return [
-            'parent_id' => $parentId ?: null,
+            'parent_id' => null,
             'code' => strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', sanitize($_POST['code'] ?? '')), 0, 12)) ?: null,
             'name' => sanitize($_POST['name'] ?? ''),
             'description' => sanitize($_POST['description'] ?? ''),

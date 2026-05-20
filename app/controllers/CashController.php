@@ -184,27 +184,9 @@ class CashController {
         $counted = normalizeMoney($_POST['counted_balance'] ?? 0);
         $expected = (float) $currentCash['expected_balance'];
         $difference = $counted - $expected;
-        $adminApprovalId = null;
-        if ($difference < -CASH_SHORTAGE_ADMIN_LIMIT) {
-            if (hasPermission('admin')) {
-                if (!Security::verifyCurrentPassword($_POST['reauth_password'] ?? '')) {
-                    setFlashMessage('error', 'Senha de confirmacao invalida.');
-                    redirect('cash', ['action' => 'close']);
-                }
-                $adminApprovalId = $_SESSION['user_id'];
-            } else {
-                $approver = Security::verifyCredentialsForRole(
-                    strtolower(trim(filter_var($_POST['approval_email'] ?? '', FILTER_SANITIZE_EMAIL))),
-                    $_POST['approval_password'] ?? '',
-                    'admin'
-                );
-                if (!$approver) {
-                    setFlashMessage('error', 'Falta acima do limite exige autorizacao de administrador.');
-                    redirect('cash', ['action' => 'close']);
-                }
-                $adminApprovalId = $approver['id'];
-            }
-        }
+        $adminApprovalId = hasPermission('admin') && $difference < -CASH_SHORTAGE_ADMIN_LIMIT
+            ? (int) $_SESSION['user_id']
+            : null;
 
         $this->pdo->beginTransaction();
         try {
@@ -239,10 +221,6 @@ class CashController {
             redirect('cash');
         }
         Security::validateRequest();
-        if (!Security::verifyCurrentPassword($_POST['reauth_password'] ?? '')) {
-            setFlashMessage('error', 'Senha de confirmacao invalida.');
-            redirect('cash');
-        }
 
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = $this->pdo->prepare("SELECT * FROM cash_registers WHERE id = ? AND status = 'open' LIMIT 1");
@@ -290,4 +268,3 @@ class CashController {
         return $stmt->fetchAll();
     }
 }
-

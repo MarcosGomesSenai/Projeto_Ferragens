@@ -35,15 +35,21 @@ class AuthController {
             redirect('login');
         }
 
-        $email = strtolower(trim(filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL)));
+        $identifier = trim((string) ($_POST['login'] ?? ($_POST['email'] ?? '')));
         $password = $_POST['password'] ?? '';
-        if ($email === '' || $password === '') {
-            setFlashMessage('error', 'Preencha email e senha.');
+        if ($identifier === '' || $password === '') {
+            setFlashMessage('error', 'Preencha usuario/email e senha.');
             redirect('login');
         }
+        $normalizedIdentifier = strtolower($identifier);
 
-        $stmt = $this->pdo->prepare('SELECT id, name, email, password_hash, role, status, must_change_password FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
+        $stmt = $this->pdo->prepare('
+            SELECT id, name, username, email, password_hash, role, status, must_change_password
+            FROM users
+            WHERE LOWER(email) = ? OR LOWER(username) = ?
+            LIMIT 1
+        ');
+        $stmt->execute([$normalizedIdentifier, $normalizedIdentifier]);
         $user = $stmt->fetch();
 
         // M-04: Proteção contra timing attack — sempre executa bcrypt, mesmo sem usuário
@@ -56,16 +62,16 @@ class AuthController {
             Security::recordRateLimitFailure('login');
             Security::auditLog('auth_login_failed', [
                 'module' => 'auth',
-                'after' => ['email' => $email],
+                'after' => ['login' => $identifier],
             ]);
-            setFlashMessage('error', 'Email ou senha incorretos.');
+            setFlashMessage('error', 'Usuario/email ou senha incorretos.');
             redirect('login');
         }
 
         if ($user['status'] !== 'active') {
             Security::auditLog('auth_login_inactive', [
                 'module' => 'auth',
-                'after'  => ['email' => $email, 'status' => $user['status']],
+                'after'  => ['login' => $identifier, 'status' => $user['status']],
             ]);
             setFlashMessage('error', 'Conta inativa. Contate o administrador.');
             redirect('login');
@@ -76,6 +82,7 @@ class AuthController {
         $_SESSION['user_data'] = [
             'id' => (int) $user['id'],
             'name' => $user['name'],
+            'username' => $user['username'] ?? null,
             'email' => $user['email'],
             'role' => $user['role'],
         ];
@@ -174,6 +181,7 @@ class AuthController {
         Security::validateRequest();
 
         $name = sanitize($_POST['name'] ?? '');
+        $username = sanitize($_POST['username'] ?? '');
         $email = strtolower(trim(filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL)));
         $password = $_POST['password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
@@ -182,6 +190,9 @@ class AuthController {
         $errors = [];
         if ($name === '') {
             $errors[] = 'Nome e obrigatorio';
+        }
+        if ($username === '' || !preg_match('/^[A-Za-z0-9._-]{3,80}$/', $username)) {
+            $errors[] = 'Usuario deve ter de 3 a 80 caracteres e usar apenas letras, numeros, ponto, traco ou underline';
         }
         if ($email === '' || !isValidEmail($email)) {
             $errors[] = 'Email invalido';
@@ -201,19 +212,20 @@ class AuthController {
         }
 
         try {
-            $stmt = $this->pdo->prepare('SELECT id FROM users WHERE email = ?');
-            $stmt->execute([$email]);
+            $stmt = $this->pdo->prepare('SELECT id FROM users WHERE email = ? OR username = ?');
+            $stmt->execute([$email, $username]);
             if ($stmt->fetch()) {
-                setFlashMessage('error', 'Este email ja esta cadastrado.');
+                setFlashMessage('error', 'Este email ou usuario ja esta cadastrado.');
                 redirect('register');
             }
 
             $stmt = $this->pdo->prepare('
-                INSERT INTO users (name, email, password_hash, role, status, must_change_password)
-                VALUES (?, ?, ?, ?, ?, 1)
+                INSERT INTO users (name, username, email, password_hash, role, status, must_change_password)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
             ');
             $stmt->execute([
                 $name,
+                $username,
                 $email,
                 password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
                 $role,
@@ -229,7 +241,7 @@ class AuthController {
         Security::auditLog('user_registered', [
             'module' => 'users',
             'record_id' => (string) $newUserId,
-            'after' => ['email' => $email, 'role' => $role],
+            'after' => ['username' => $username, 'email' => $email, 'role' => $role],
         ]);
         setFlashMessage('success', 'Usuario cadastrado com sucesso.');
         redirect('users');

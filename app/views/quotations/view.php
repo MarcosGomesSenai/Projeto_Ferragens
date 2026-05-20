@@ -82,24 +82,6 @@ require_once APP_PATH . '/views/templates/header.php';
                                             <input type="number" id="installments" name="installments" class="form-control" min="1" max="12" step="1" value="1" required>
                                         </div>
                                     </div>
-                                    <div class="form-grid-2col">
-                                        <div class="form-group">
-                                            <label for="approval_email" class="form-label">Email autorizador</label>
-                                            <input type="email" id="approval_email" name="approval_email" class="form-control" autocomplete="username">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="approval_password" class="form-label">Senha autorizador</label>
-                                            <input type="password" id="approval_password" name="approval_password" class="form-control" autocomplete="current-password">
-                                        </div>
-                                    </div>
-                                    <label class="checkbox-row">
-                                        <input type="checkbox" name="confirm_below_cost" value="1">
-                                        <span>Confirmar conversao abaixo do custo quando autorizada</span>
-                                    </label>
-                                    <label class="checkbox-row">
-                                        <input type="checkbox" name="confirm_negative_stock" value="1">
-                                        <span>Confirmar conversao sem estoque quando autorizada</span>
-                                    </label>
                                     <div class="form-actions form-actions-left">
                                         <button type="submit" class="btn btn-success" data-confirm="Converter este orcamento em venda e baixar o estoque?">Converter</button>
                                     </div>

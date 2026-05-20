@@ -32,17 +32,6 @@ require_once APP_PATH . '/views/templates/header.php';
                             <label for="reason" class="form-label required">Motivo</label>
                             <input type="text" id="reason" name="reason" class="form-control" required>
                         </div>
-                        <div class="form-section-title">Autorizacao para sangria</div>
-                        <div class="form-grid-2col">
-                            <div class="form-group">
-                                <label for="approval_email" class="form-label">Email do gerente</label>
-                                <input type="email" id="approval_email" name="approval_email" class="form-control" autocomplete="username">
-                            </div>
-                            <div class="form-group">
-                                <label for="approval_password" class="form-label">Senha do gerente</label>
-                                <input type="password" id="approval_password" name="approval_password" class="form-control" autocomplete="current-password">
-                            </div>
-                        </div>
                         <div class="form-actions">
                             <a href="index.php?page=cash" class="btn btn-secondary">Cancelar</a>
                             <button type="submit" class="btn btn-success">Registrar</button>

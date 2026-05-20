@@ -39,11 +39,11 @@ $endDateValue = substr($endDate, 0, 10);
 
             <?php
             $tables = [
-                'inventory' => ['Inventario valorado', $inventory, ['sku' => 'SKU', 'name' => 'Produto', 'category_name' => 'Categoria', 'quantity' => 'Qtd.', 'cost_price' => 'Custo', 'stock_cost_value' => 'Valor custo', 'sale_price' => 'Venda', 'stock_sale_value' => 'Valor venda']],
-                'abc_revenue' => ['Curva ABC por faturamento', $abcRevenue, ['sku' => 'SKU', 'name' => 'Produto', 'sold_quantity' => 'Qtd.', 'revenue' => 'Faturamento', 'margin_amount' => 'Margem R$', 'abc_class' => 'ABC']],
-                'abc_margin' => ['Curva ABC por margem', $abcMargin, ['sku' => 'SKU', 'name' => 'Produto', 'sold_quantity' => 'Qtd.', 'revenue' => 'Faturamento', 'margin_amount' => 'Margem R$', 'abc_class' => 'ABC']],
-                'turnover' => ['Giro de estoque', $turnover, ['sku' => 'SKU', 'name' => 'Produto', 'category_name' => 'Categoria', 'current_stock' => 'Estoque', 'sold_quantity' => 'Vendido', 'turnover_rate' => 'Giro', 'immobilized_value' => 'Imobilizado']],
-                'losses' => ['Relatorio de perdas', $losses, ['sku' => 'SKU', 'name' => 'Produto', 'reason' => 'Motivo', 'quantity' => 'Qtd.', 'cost_value' => 'Valor custo']],
+                'inventory' => ['Inventario valorado', $inventory, ['sku' => 'Codigo de barras', 'name' => 'Produto', 'category_name' => 'Categoria', 'quantity' => 'Qtd.', 'cost_price' => 'Custo', 'stock_cost_value' => 'Valor em estoque (custo)', 'sale_price' => 'Venda', 'stock_sale_value' => 'Potencial de venda']],
+                'abc_revenue' => ['Curva ABC por faturamento', $abcRevenue, ['sku' => 'Codigo de barras', 'name' => 'Produto', 'sold_quantity' => 'Qtd.', 'revenue' => 'Faturamento', 'margin_amount' => 'Margem R$', 'abc_class' => 'ABC']],
+                'abc_margin' => ['Curva ABC por margem', $abcMargin, ['sku' => 'Codigo de barras', 'name' => 'Produto', 'sold_quantity' => 'Qtd.', 'revenue' => 'Faturamento', 'margin_amount' => 'Margem R$', 'abc_class' => 'ABC']],
+                'turnover' => ['Giro de estoque', $turnover, ['sku' => 'Codigo de barras', 'name' => 'Produto', 'category_name' => 'Categoria', 'current_stock' => 'Estoque', 'sold_quantity' => 'Vendido', 'turnover_rate' => 'Giro', 'immobilized_value' => 'Imobilizado']],
+                'losses' => ['Relatorio de perdas', $losses, ['sku' => 'Codigo de barras', 'name' => 'Produto', 'reason' => 'Motivo', 'quantity' => 'Qtd.', 'cost_value' => 'Valor custo']],
             ];
             ?>
 

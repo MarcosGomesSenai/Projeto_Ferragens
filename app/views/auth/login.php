@@ -14,15 +14,15 @@ require_once APP_PATH . '/views/templates/header.php';
             <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
 
             <div class="form-group">
-                <label for="email" class="form-label required">Email</label>
+                <label for="login" class="form-label required">Usuario ou email</label>
                 <input
-                    type="email"
-                    id="email"
-                    name="email"
+                    type="text"
+                    id="login"
+                    name="login"
                     class="form-control"
-                    placeholder="seu@email.com"
+                    placeholder="FerragensSouza ou seu@email.com"
                     required
-                    autocomplete="email"
+                    autocomplete="username"
                 >
             </div>
 

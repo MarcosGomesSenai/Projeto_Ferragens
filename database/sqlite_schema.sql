@@ -3,6 +3,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    username TEXT UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'operator' CHECK (role IN ('admin', 'manager', 'operator', 'seller')),
@@ -431,8 +432,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_module_action ON audit_logs(module, action);
 
-INSERT OR IGNORE INTO users (id, name, email, password_hash, role, status, must_change_password)
-VALUES (1, 'Administrador', 'admin@ferragensouza.local', '$2y$12$mCuxSpYKTVov0JHfS/.CdOl8n.RnXN5aIkfqy8PITSI/b/ynSkkxO', 'admin', 'active', 1);
+INSERT OR IGNORE INTO users (id, name, username, email, password_hash, role, status, must_change_password)
+VALUES (1, 'Administrador', 'FerragensSouza', 'admin@ferragensouza.local', '$2y$12$PTBMS8nDeXm5ucjU1h1UW.tAMyNCJnRlLZJ/joUNr3S5LYBDRbeky', 'admin', 'active', 0);
 
 INSERT OR IGNORE INTO customers (id, document_type, document, name, customer_type, is_default, status)
 VALUES (1, 'none', NULL, 'Consumidor Final', 'retail', 1, 'active');

@@ -2,7 +2,7 @@
 /**
  * Controlador de Produtos.
  *
- * Regras principais: SKU unico e imutavel apos movimentacao,
+ * Regras principais: codigo de barras unico e imutavel apos movimentacao,
  * preco de venda acima do custo, estoque alterado somente por movimentacoes.
  */
 
@@ -45,10 +45,9 @@ class ProductController {
             $params[] = $status;
         }
         if ($stockAlert === 'low') {
-            $where[] = '((p.reorder_point > 0 AND p.quantity <= p.reorder_point) OR (p.reorder_point <= 0 AND p.quantity <= p.min_quantity))';
+            $where[] = '((p.min_quantity > 0 AND p.quantity < p.min_quantity) OR (p.reorder_point > 0 AND p.quantity < p.reorder_point))';
         } elseif ($stockAlert === 'critical') {
-            $where[] = 'p.quantity <= ?';
-            $params[] = CRITICAL_STOCK_THRESHOLD;
+            $where[] = '(p.min_quantity > 0 AND p.quantity < p.min_quantity)';
         }
 
         if ($where) {
@@ -136,7 +135,7 @@ class ProductController {
                 $this->pdo->rollBack();
             }
             error_log('[Ferragens Souza] Erro ao salvar produto: ' . $e->getMessage());
-            setFlashMessage('error', 'Nao foi possivel salvar. Verifique se o SKU ja existe.');
+            setFlashMessage('error', 'Nao foi possivel salvar. Verifique se o codigo de barras ja existe.');
             redirect('products', ['action' => 'add']);
         }
     }
@@ -225,7 +224,7 @@ class ProductController {
                 $this->pdo->rollBack();
             }
             error_log('[Ferragens Souza] Erro ao atualizar produto: ' . $e->getMessage());
-            setFlashMessage('error', 'Nao foi possivel atualizar. Verifique se o SKU ja existe.');
+            setFlashMessage('error', 'Nao foi possivel atualizar. Verifique se o codigo de barras ja existe.');
             redirect('products', ['action' => 'edit', 'id' => $id]);
         }
     }
@@ -286,18 +285,28 @@ class ProductController {
         }
         $q = sanitize($_GET['q'] ?? '');
         $params = [];
-        $where = ["(p.status = 'active' OR (p.status = 'discontinued' AND p.quantity > 0))"];
+        $context = sanitize($_GET['context'] ?? 'sale');
+        $where = $context === 'purchase'
+            ? ["p.status = 'active'"]
+            : ["(p.status = 'active' OR (p.status = 'discontinued' AND p.quantity > 0))"];
         if ($q !== '') {
-            $where[] = '(p.name LIKE ? OR p.sku LIKE ?)';
-            array_push($params, "%$q%", "%$q%");
+            $where[] = '(p.name LIKE ? OR p.sku LIKE ? OR p.brand LIKE ?)';
+            array_push($params, "%$q%", "%$q%", "%$q%");
+        }
+
+        $orderBy = $q !== ''
+            ? 'CASE WHEN p.sku = ? THEN 0 WHEN p.sku LIKE ? THEN 1 WHEN p.name LIKE ? THEN 2 ELSE 3 END, p.name ASC'
+            : 'COALESCE(p.updated_at, p.created_at) DESC, p.name ASC';
+        if ($q !== '') {
+            array_push($params, $q, "$q%", "$q%");
         }
 
         $sql = "
-            SELECT p.id, p.sku, p.name, p.unit_of_measure, p.quantity,
+            SELECT p.id, p.sku AS barcode, p.name, p.unit_of_measure, p.quantity,
                    p.sale_price, p.wholesale_price
             FROM products p
             WHERE " . implode(' AND ', $where) . "
-            ORDER BY p.name ASC
+            ORDER BY $orderBy
             LIMIT 20
         ";
         $stmt = $this->pdo->prepare($sql);
@@ -310,12 +319,12 @@ class ProductController {
     private function productDataFromPost(?array $existing = null): array {
         $categoryId = (int) ($_POST['category_id'] ?? 0);
         $subcategoryId = (int) ($_POST['subcategory_id'] ?? 0);
-        $sku = sanitize($_POST['sku'] ?? '');
+        $barcode = sanitize($_POST['barcode'] ?? ($_POST['sku'] ?? ''));
 
-        if ($sku === '') {
-            $sku = $this->generateCategorySku($categoryId, $subcategoryId);
+        if ($barcode === '') {
+            $barcode = $this->generateProductBarcode();
         } elseif ($existing && $this->hasStockMovements((int) $existing['id'])) {
-            $sku = $existing['sku'];
+            $barcode = $existing['sku'];
         }
 
         $cost = normalizeMoney($_POST['cost_price'] ?? 0);
@@ -328,7 +337,7 @@ class ProductController {
         $wholesale = $wholesale > 0 ? $wholesale : null;
 
         return [
-            'sku' => $sku,
+            'sku' => $barcode,
             'name' => sanitize($_POST['name'] ?? ''),
             'description' => sanitize($_POST['description'] ?? ''),
             'category_id' => $categoryId ?: null,
@@ -373,8 +382,8 @@ class ProductController {
         if ($data['reorder_point'] > 0 && $data['reorder_point'] < $data['min_quantity']) {
             $errors[] = 'Ponto de reposicao nao pode ser menor que o estoque minimo.';
         }
-        if ($this->skuExists($data['sku'], $ignoreId)) {
-            $errors[] = 'SKU ja utilizado por outro produto.';
+        if ($this->barcodeExists($data['sku'], $ignoreId)) {
+            $errors[] = 'Codigo de barras ja utilizado por outro produto.';
         }
         return $errors;
     }
@@ -411,9 +420,9 @@ class ProductController {
         return (int) $stmt->fetchColumn() > 0;
     }
 
-    private function skuExists(string $sku, ?int $ignoreId = null): bool {
+    private function barcodeExists(string $barcode, ?int $ignoreId = null): bool {
         $sql = 'SELECT id FROM products WHERE sku = ?';
-        $params = [$sku];
+        $params = [$barcode];
         if ($ignoreId !== null) {
             $sql .= ' AND id != ?';
             $params[] = $ignoreId;
@@ -424,19 +433,6 @@ class ProductController {
     }
 
 
-    /** @deprecated Substituido por skuExists() — M-03 */
-    private function valueExists(string $table, string $column, string $value, ?int $ignoreId = null): bool {
-        $sql = "SELECT id FROM $table WHERE $column = ?";
-        $params = [$value];
-        if ($ignoreId) {
-            $sql .= ' AND id <> ?';
-            $params[] = $ignoreId;
-        }
-        $stmt = $this->pdo->prepare($sql . ' LIMIT 1');
-        $stmt->execute($params);
-        return (bool) $stmt->fetch();
-    }
-
     private function fetchCategories(): array {
         return $this->pdo->query('SELECT id, parent_id, code, name FROM categories WHERE status = "active" ORDER BY parent_id ASC, name ASC')->fetchAll();
     }
@@ -445,25 +441,21 @@ class ProductController {
         return $this->pdo->query('SELECT id, name FROM suppliers WHERE status = "active" ORDER BY name ASC')->fetchAll();
     }
 
-    private function generateCategorySku(?int $categoryId, ?int $subcategoryId): string {
-        $ids = array_filter([$categoryId, $subcategoryId]);
-        $codes = [];
-        if ($ids) {
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $stmt = $this->pdo->prepare("SELECT id, code, name FROM categories WHERE id IN ($placeholders)");
-            $stmt->execute(array_values($ids));
-            foreach ($stmt->fetchAll() as $row) {
-                $codes[(int) $row['id']] = $row['code'] ?: strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $row['name']), 0, 3));
+    private function generateProductBarcode(): string {
+        $nextId = (int) $this->pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM products')->fetchColumn();
+        for ($i = 0; $i < 1000; $i++) {
+            $base = '789' . str_pad((string) ($nextId + $i), 9, '0', STR_PAD_LEFT);
+            $barcode = $base . ean13CheckDigit($base);
+            if (!$this->barcodeExists($barcode)) {
+                return $barcode;
             }
         }
-        $prefix = $codes[$categoryId] ?? 'PRD';
-        if ($subcategoryId && isset($codes[$subcategoryId])) {
-            $prefix .= '-' . $codes[$subcategoryId];
-        }
 
-        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM products WHERE category_id = ?');
-        $stmt->execute([$categoryId]);
-        return sprintf('%s-%04d', strtoupper($prefix), ((int) $stmt->fetchColumn()) + 1);
+        do {
+            $barcode = generateBarcodeCode('789');
+        } while ($this->barcodeExists($barcode));
+
+        return $barcode;
     }
 
     private function recordCostHistory(int $productId, float $oldCost, float $newCost): void {

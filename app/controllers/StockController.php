@@ -35,10 +35,6 @@ class StockController {
             redirect('stock', ['action' => 'movements']);
         }
         Security::validateRequest();
-        if (!Security::verifyCurrentPassword($_POST['reauth_password'] ?? '')) {
-            setFlashMessage('error', 'Senha de confirmacao invalida.');
-            redirect('stock', ['action' => 'movements']);
-        }
 
         $id = (int) ($_POST['id'] ?? 0);
         if ($id <= 0) {
@@ -61,36 +57,23 @@ class StockController {
                 $stmt->execute([$productId]);
                 $currentQty = (float) $stmt->fetchColumn();
                 if (round($currentQty, 3) !== round((float) $movement['new_quantity'], 3)) {
-                    throw new RuntimeException('Ja existem movimentacoes posteriores para este produto.');
+                    throw new RuntimeException('Esta movimentacao nao pode ser removida porque ja existem alteracoes posteriores neste produto.');
                 }
                 $targetQty = round((float) $movement['old_quantity'], 3);
-                $reverseQty = abs(round($currentQty - $targetQty, 3));
                 $this->pdo->prepare('UPDATE products SET quantity = ? WHERE id = ?')
                     ->execute([$targetQty, $productId]);
-                $this->pdo->prepare("
-                    INSERT INTO stock_movements
-                        (product_id, user_id, type, quantity, old_quantity, new_quantity, reason, approved_by, date)
-                    VALUES (?, ?, 'adjustment', ?, ?, ?, ?, ?, ?)
-                ")->execute([
-                    $productId,
-                    $_SESSION['user_id'],
-                    $reverseQty,
-                    $currentQty,
-                    $targetQty,
-                    'Reversao da movimentacao #' . $id,
-                    $_SESSION['user_id'],
-                    dbNow(),
-                ]);
             }
 
+            $this->pdo->prepare('DELETE FROM stock_movements WHERE id = ?')->execute([$id]);
+
             $this->pdo->commit();
-            Security::auditLog('stock_movement_reversed', [
+            Security::auditLog('stock_movement_removed', [
                 'module' => 'stock',
                 'record_id' => (string) $id,
                 'before' => $movement,
-                'after' => ['new_quantity' => $movement['old_quantity']],
+                'after' => ['product_id' => $productId, 'restored_quantity' => $movement['old_quantity']],
             ]);
-            setFlashMessage('success', 'Movimentacao revertida com sucesso.');
+            setFlashMessage('success', 'Movimentacao removida. O estoque voltou ao saldo anterior.');
             $this->redirectAfterMovementReverse($productId);
         } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) {
@@ -119,13 +102,13 @@ class StockController {
             WHERE status IN ('active','discontinued')
             ORDER BY name ASC
         ")->fetchAll();
-        $reasons = [
-            'Inventario Fisico',
-            'Quebra/Dano',
-            'Produto Vencido',
-            'Erro de Cadastro',
-            'Furto/Roubo',
-            'Uso Interno',
+        $movementTypes = [
+            'entry' => 'Entrada',
+            'withdrawal' => 'Retirada',
+        ];
+        $reasonsByType = [
+            'entry' => ['Compra sem NF', 'Devolucao ao estoque', 'Entrada manual', 'Correcao de cadastro'],
+            'withdrawal' => ['Retirada manual', 'Uso interno', 'Quebra/Dano', 'Perda/Avaria', 'Produto vencido', 'Furto/Roubo', 'Correcao de cadastro'],
         ];
         require_once APP_PATH . '/views/stock/adjustment.php';
     }
@@ -138,22 +121,27 @@ class StockController {
         Security::validateRequest();
 
         $productId = (int) ($_POST['product_id'] ?? 0);
-        $physicalQuantity = normalizeQuantity($_POST['physical_quantity'] ?? 0);
+        $movementType = sanitize($_POST['movement_type'] ?? 'entry');
+        if (in_array($movementType, ['exit', 'loss'], true)) {
+            $movementType = 'withdrawal';
+        }
+        $quantity = normalizeQuantity($_POST['quantity'] ?? ($_POST['physical_quantity'] ?? 0));
         $reason = sanitize($_POST['reason'] ?? '');
-        $allowedReasons = [
-            'Inventario Fisico',
-            'Quebra/Dano',
-            'Produto Vencido',
-            'Erro de Cadastro',
-            'Furto/Roubo',
-            'Uso Interno',
+        $allowedTypes = ['entry', 'withdrawal'];
+        $allowedReasonsByType = [
+            'entry' => ['Compra sem NF', 'Devolucao ao estoque', 'Entrada manual', 'Correcao de cadastro'],
+            'withdrawal' => ['Retirada manual', 'Uso interno', 'Quebra/Dano', 'Perda/Avaria', 'Produto vencido', 'Furto/Roubo', 'Correcao de cadastro'],
         ];
-        if ($productId <= 0 || $physicalQuantity < 0 || !in_array($reason, $allowedReasons, true)) {
-            setFlashMessage('error', 'Preencha produto, quantidade fisica e motivo.');
+        if ($productId <= 0 || !in_array($movementType, $allowedTypes, true) || $quantity < 0) {
+            setFlashMessage('error', 'Preencha produto, tipo, quantidade e motivo.');
             redirect('stock', ['action' => 'adjustment']);
         }
-        if (!Security::verifyCurrentPassword($_POST['reauth_password'] ?? '')) {
-            setFlashMessage('error', 'Senha de confirmacao invalida.');
+        if (!in_array($reason, $allowedReasonsByType[$movementType], true)) {
+            setFlashMessage('error', 'Motivo incompativel com o tipo de movimentacao selecionado.');
+            redirect('stock', ['action' => 'adjustment']);
+        }
+        if ($quantity <= 0) {
+            setFlashMessage('error', 'A quantidade movimentada deve ser maior que zero.');
             redirect('stock', ['action' => 'adjustment']);
         }
 
@@ -167,17 +155,28 @@ class StockController {
             }
 
             $oldQuantity = (float) $product['quantity'];
-            $newQuantity = $physicalQuantity;
+            if ($movementType === 'entry') {
+                $newQuantity = round($oldQuantity + $quantity, 3);
+            } else {
+                $newQuantity = round($oldQuantity - $quantity, 3);
+                if ($newQuantity < -0.0001) {
+                    throw new RuntimeException('Quantidade maior que o estoque disponivel.');
+                }
+                $newQuantity = max(0.0, $newQuantity);
+            }
+
             $difference = round($newQuantity - $oldQuantity, 3);
             if (abs($difference) < 0.001) {
-                throw new RuntimeException('A quantidade fisica informada e igual ao estoque atual.');
+                throw new RuntimeException('A movimentacao nao altera o estoque atual.');
             }
             if ($difference > 0 && $product['status'] === 'discontinued') {
                 throw new RuntimeException('Produto descontinuado nao aceita aumento de estoque.');
             }
-            $lossReasons = ['Quebra/Dano', 'Produto Vencido', 'Furto/Roubo', 'Uso Interno'];
-            $type = $difference < 0 && in_array($reason, $lossReasons, true) ? 'loss' : 'adjustment';
-            $movementQuantity = abs($difference);
+            $lossReasons = ['Quebra/Dano', 'Perda/Avaria', 'Produto vencido', 'Furto/Roubo'];
+            $type = $movementType === 'entry'
+                ? 'entry'
+                : (in_array($reason, $lossReasons, true) ? 'loss' : 'exit');
+            $movementQuantity = $quantity;
 
             $this->pdo->prepare('UPDATE products SET quantity = ? WHERE id = ?')->execute([$newQuantity, $productId]);
             $this->pdo->prepare("
@@ -200,7 +199,7 @@ class StockController {
             Security::auditLog('stock_adjustment_created', [
                 'module' => 'stock',
                 'record_id' => (string) $productId,
-                'after' => compact('type', 'physicalQuantity', 'reason', 'newQuantity'),
+                'after' => compact('type', 'quantity', 'reason', 'oldQuantity', 'newQuantity'),
             ]);
             setFlashMessage('success', 'Movimentacao de estoque registrada com sucesso.');
             redirect('stock', ['action' => 'movements']);
@@ -238,17 +237,19 @@ class StockController {
         $lowStockProducts = $this->pdo->query("
             SELECT p.id, p.sku, p.name, p.quantity, p.min_quantity, p.reorder_point,
                    p.cost_price, p.sale_price, p.status, p.unit_of_measure,
+                   CASE WHEN p.reorder_point > p.min_quantity THEN p.reorder_point ELSE p.min_quantity END AS reorder_target,
                    c.name AS category_name, s.name AS supplier_name
             FROM products p
             LEFT JOIN categories c ON c.id = p.category_id
             LEFT JOIN suppliers s ON s.id = p.supplier_id
             WHERE p.status = 'active'
               AND (
-                  (p.reorder_point > 0 AND p.quantity <= p.reorder_point)
-                  OR (p.reorder_point <= 0 AND p.quantity <= p.min_quantity)
+                  (p.min_quantity > 0 AND p.quantity < p.min_quantity)
+                  OR (p.reorder_point > 0 AND p.quantity < p.reorder_point)
               )
             ORDER BY
-                (CASE WHEN p.reorder_point > 0 THEN p.reorder_point ELSE p.min_quantity END - p.quantity) DESC,
+                CASE WHEN p.min_quantity > 0 AND p.quantity < p.min_quantity THEN 0 ELSE 1 END ASC,
+                (CASE WHEN p.reorder_point > p.min_quantity THEN p.reorder_point ELSE p.min_quantity END - p.quantity) DESC,
                 p.quantity ASC
         ")->fetchAll();
         require_once APP_PATH . '/views/stock/low-stock.php';

@@ -214,40 +214,4 @@ class Security {
             && password_verify($password, $user['password_hash']);
     }
 
-    public static function requireCurrentPassword(string $password): void {
-        if (!self::verifyCurrentPassword($password)) {
-            throw new RuntimeException('Senha de confirmacao invalida.');
-        }
-    }
-
-    public static function verifyCredentialsForRole(string $email, string $password, string $requiredRole): ?array {
-        if ($email === '' || $password === '') {
-            return null;
-        }
-
-        global $pdo;
-        if (!$pdo instanceof PDO) {
-            return null;
-        }
-
-        $stmt = $pdo->prepare('SELECT id, name, email, password_hash, role, status FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([strtolower(trim($email))]);
-        $user = $stmt->fetch();
-
-        if (!$user || $user['status'] !== 'active' || !password_verify($password, $user['password_hash'])) {
-            return null;
-        }
-
-        $roleHierarchy = [
-            'admin' => 4,
-            'manager' => 3,
-            'operator' => 2,
-            'seller' => 1,
-        ];
-        if (($roleHierarchy[$user['role']] ?? 0) < ($roleHierarchy[$requiredRole] ?? 999)) {
-            return null;
-        }
-
-        return $user;
-    }
 }

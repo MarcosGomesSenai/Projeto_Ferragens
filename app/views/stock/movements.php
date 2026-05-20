@@ -41,7 +41,7 @@ require_once APP_PATH . '/views/templates/header.php';
                                             <td><?php echo formatDate($movement['date']); ?></td>
                                             <td><strong><?php echo htmlspecialchars($movement['product_name'] ?? '-'); ?></strong><small class="muted-line"><?php echo htmlspecialchars($movement['sku'] ?? ''); ?></small></td>
                                             <td><?php echo STOCK_MOVEMENT_TYPES[$movement['type']] ?? htmlspecialchars($movement['type']); ?></td>
-                                            <td><?php echo formatQuantity($movement['quantity']); ?></td>
+                                            <td><?php echo formatStockMovementQuantity($movement); ?></td>
                                             <td><?php echo formatQuantity($movement['old_quantity']); ?></td>
                                             <td><?php echo formatQuantity($movement['new_quantity']); ?></td>
                                             <td><?php echo htmlspecialchars($movement['reason'] ?? '-'); ?></td>
@@ -51,8 +51,7 @@ require_once APP_PATH . '/views/templates/header.php';
                                                     <form action="index.php?page=stock&action=reverseMovement" method="POST" class="table-actions">
                                                         <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
                                                         <input type="hidden" name="id" value="<?php echo (int) $movement['id']; ?>">
-                                                        <input type="password" name="reauth_password" class="form-control" placeholder="Senha" autocomplete="current-password" required>
-                                                        <button type="submit" class="btn btn-sm btn-danger" data-confirm="Reverter esta movimentacao? So e permitido se ela for a ultima alteracao do produto.">Reverter</button>
+                                                        <button type="submit" class="btn btn-sm btn-danger" data-confirm="Remover esta movimentacao? O estoque voltara ao saldo anterior. So e permitido se ela for a ultima alteracao do produto.">Remover</button>
                                                     </form>
                                                 <?php else: ?>
                                                     -

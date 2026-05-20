@@ -85,10 +85,10 @@ define('USER_ROLES', [
 
 define('STOCK_MOVEMENT_TYPES', [
     'entry'      => 'Entrada',
-    'exit'       => 'Saida',
+    'exit'       => 'Retirada',
     'adjustment' => 'Ajuste',
     'return'     => 'Devolucao',
-    'loss'       => 'Perda',
+    'loss'       => 'Retirada',
 ]);
 
 define('PRODUCT_STATUS', [

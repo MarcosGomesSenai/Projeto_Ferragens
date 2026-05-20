@@ -88,18 +88,49 @@ function formatQuantity($value): string {
 
 function productStockAlertLevel(array $product): string {
     $qty = (float) ($product['quantity'] ?? 0);
-    if ($qty <= CRITICAL_STOCK_THRESHOLD) {
+    $min = (float) ($product['min_quantity'] ?? 0);
+    if ($min > 0 && $qty < $min) {
         return 'critical';
     }
     $reorderPoint = (float) ($product['reorder_point'] ?? 0);
-    if ($reorderPoint > 0 && $qty <= $reorderPoint) {
-        return 'low';
-    }
-    $min = (float) ($product['min_quantity'] ?? 0);
-    if ($min > 0 && $qty <= $min) {
+    if ($reorderPoint > 0 && $qty < $reorderPoint) {
         return 'low';
     }
     return 'ok';
+}
+
+function productReorderTarget(array $product): float {
+    return max((float) ($product['min_quantity'] ?? 0), (float) ($product['reorder_point'] ?? 0));
+}
+
+function productSuggestedReorderQuantity(array $product): float {
+    if (productStockAlertLevel($product) === 'ok') {
+        return 0.0;
+    }
+    return max(0.0, productReorderTarget($product) - (float) ($product['quantity'] ?? 0));
+}
+
+function productStockAlertText(array $product): string {
+    $level = productStockAlertLevel($product);
+    if ($level === 'critical') {
+        return 'Abaixo do minimo';
+    }
+    if ($level === 'low') {
+        return 'Ponto de reposicao';
+    }
+    return 'OK';
+}
+
+function stockMovementDelta(array $movement): float {
+    return round((float) ($movement['new_quantity'] ?? 0) - (float) ($movement['old_quantity'] ?? 0), 3);
+}
+
+function formatStockMovementQuantity(array $movement): string {
+    $delta = stockMovementDelta($movement);
+    if (abs($delta) >= 0.001) {
+        return ($delta > 0 ? '+' : '-') . formatQuantity(abs($delta));
+    }
+    return formatQuantity($movement['quantity'] ?? 0);
 }
 
 function generateId(): string {
@@ -133,8 +164,20 @@ function getFlashMessage(): ?array {
     return $message;
 }
 
-function generateSKU(string $prefix = 'PRD'): string {
-    return strtoupper($prefix) . '-' . strtoupper(substr(uniqid(), -8));
+function ean13CheckDigit(string $base12): int {
+    $digits = str_pad(substr(onlyDigits($base12), 0, 12), 12, '0', STR_PAD_LEFT);
+    $sum = 0;
+    for ($i = 0; $i < 12; $i++) {
+        $sum += (int) $digits[$i] * ($i % 2 === 0 ? 1 : 3);
+    }
+    return (10 - ($sum % 10)) % 10;
+}
+
+function generateBarcodeCode(string $prefix = '789'): string {
+    $prefixDigits = substr(str_pad(onlyDigits($prefix), 3, '0'), 0, 3);
+    $randomDigits = str_pad((string) random_int(0, 999999999), 9, '0', STR_PAD_LEFT);
+    $base = $prefixDigits . $randomDigits;
+    return $base . ean13CheckDigit($base);
 }
 
 function calculateMargin(float $cost, float $price): float {

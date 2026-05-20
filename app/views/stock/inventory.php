@@ -13,8 +13,12 @@ require_once APP_PATH . '/views/templates/header.php';
         <div class="content-area">
             <div class="stats-grid">
                 <div class="stat-card success">
-                    <div class="stat-label">Valor em estoque</div>
+                    <div class="stat-label">Valor em estoque (custo)</div>
                     <div class="stat-value"><?php echo formatMoney((float) ($stats['total_stock_value'] ?? 0)); ?></div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-label">Potencial de venda</div>
+                    <div class="stat-value"><?php echo formatMoney((float) ($stats['total_sale_value'] ?? 0)); ?></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Total de produtos</div>
@@ -40,11 +44,12 @@ require_once APP_PATH . '/views/templates/header.php';
                                     <th>Custo</th>
                                     <th>Venda</th>
                                     <th>Total custo</th>
+                                    <th>Total venda</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($products)): ?>
-                                    <tr><td colspan="7" class="text-center">Nenhum produto encontrado.</td></tr>
+                                    <tr><td colspan="8" class="text-center">Nenhum produto encontrado.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($products as $product): ?>
                                         <tr>
@@ -55,6 +60,7 @@ require_once APP_PATH . '/views/templates/header.php';
                                             <td><?php echo formatMoney((float) $product['cost_price']); ?></td>
                                             <td><?php echo formatMoney((float) $product['sale_price']); ?></td>
                                             <td><?php echo formatMoney((float) $product['cost_price'] * (float) $product['quantity']); ?></td>
+                                            <td><?php echo formatMoney((float) $product['sale_price'] * (float) $product['quantity']); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>

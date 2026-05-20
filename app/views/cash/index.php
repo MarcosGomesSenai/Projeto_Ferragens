@@ -49,7 +49,6 @@ require_once APP_PATH . '/views/templates/header.php';
                                                 <form action="index.php?page=cash&action=forceClose" method="POST" class="table-actions">
                                                     <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
                                                     <input type="hidden" name="id" value="<?php echo (int) $pending['id']; ?>">
-                                                    <input type="password" name="reauth_password" class="form-control" placeholder="Senha admin" autocomplete="current-password" required>
                                                     <button type="submit" class="btn btn-sm btn-warning" data-confirm="Forcar fechamento retroativo deste caixa?">Forcar fechamento</button>
                                                 </form>
                                             <?php else: ?>

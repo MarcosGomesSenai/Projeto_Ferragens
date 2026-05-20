@@ -33,7 +33,7 @@ function navActive(string $page, string $action = ''): string {
             <?php if (hasPermission('seller')): ?>
             <li class="sidebar-nav-item">
                 <a href="index.php?page=pos" class="<?php echo navActive('pos'); ?>">
-                    <span class="sidebar-nav-icon">PDV</span><span>PDV</span>
+                    <span class="sidebar-nav-icon">VD</span><span>Nova Venda</span>
                 </a>
             </li>
             <li class="sidebar-nav-item">
@@ -94,7 +94,7 @@ function navActive(string $page, string $action = ''): string {
             </li>
             <li class="sidebar-nav-item">
                 <a href="index.php?page=sales" class="<?php echo navActive('sales'); ?>">
-                    <span class="sidebar-nav-icon">VD</span><span>Vendas</span>
+                    <span class="sidebar-nav-icon">HV</span><span>Historico de Vendas</span>
                 </a>
             </li>
             <li class="sidebar-nav-item">

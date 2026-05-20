@@ -5,7 +5,7 @@ Sistema local de gestao para ferragens e materiais de construcao, evoluido a par
 ## Escopo atual
 
 - Autenticacao com perfis `admin`, `manager`, `operator` e `seller`
-- Cadastro de produtos simplificado com SKU, categoria, marca, unidade, precos e estoque minimo
+- Cadastro de produtos simplificado com codigo de barras, categoria, marca, unidade, precos e estoque minimo
 - Cadastro de fornecedores com CNPJ, segmento e condicoes comerciais
 - Cadastro de clientes com CPF/CNPJ e crediario basico
 - Estoque com movimentacoes auditaveis, inventario e fila de reposicao

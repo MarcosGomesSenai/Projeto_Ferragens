@@ -16,10 +16,12 @@ $selected = static function ($actual, $expected): string {
             <option value="cnpj" <?php echo $selected($customer['document_type'] ?? '', 'cnpj'); ?>>CNPJ</option>
             <option value="none" <?php echo $selected($customer['document_type'] ?? '', 'none'); ?>>Nao informado</option>
         </select>
+        <small class="form-text">Escolha Nao informado para venda simples sem CPF/CNPJ.</small>
     </div>
     <div class="form-group">
         <label for="document" class="form-label">Documento</label>
         <input type="text" id="document" name="document" class="form-control" value="<?php echo $value('document'); ?>">
+        <small class="form-text">CPF ou CNPJ sem obrigatoriedade quando o tipo for Nao informado.</small>
     </div>
     <div class="form-group">
         <label for="customer_type" class="form-label required">Tipo de cliente</label>
@@ -28,38 +30,45 @@ $selected = static function ($actual, $expected): string {
                 <option value="<?php echo $key; ?>" <?php echo $selected($customer['customer_type'] ?? 'retail', $key); ?>><?php echo $label; ?></option>
             <?php endforeach; ?>
         </select>
+        <small class="form-text">Profissional usa preco de atacado quando o produto tiver esse preco.</small>
     </div>
 </div>
 
 <div class="form-group">
     <label for="name" class="form-label required">Nome</label>
     <input type="text" id="name" name="name" class="form-control" value="<?php echo $value('name'); ?>" required>
+    <small class="form-text">Nome que aparece no PDV, orcamentos e contas a receber.</small>
 </div>
 
 <div class="form-grid-2col">
     <div class="form-group">
         <label for="phone" class="form-label">Telefone</label>
         <input type="text" id="phone" name="phone" class="form-control" value="<?php echo $value('phone'); ?>" data-mask="phone">
+        <small class="form-text">Opcional. Use para contato de retirada, orcamento ou cobranca.</small>
     </div>
     <div class="form-group">
         <label for="email" class="form-label">Email</label>
         <input type="email" id="email" name="email" class="form-control" value="<?php echo $value('email'); ?>">
+        <small class="form-text">Opcional. Email do cliente para contato.</small>
     </div>
 </div>
 
 <div class="form-group">
     <label for="address" class="form-label">Endereco</label>
     <input type="text" id="address" name="address" class="form-control" value="<?php echo $value('address'); ?>">
+    <small class="form-text">Opcional. Endereco de entrega ou referencia do cliente.</small>
 </div>
 
 <div class="form-grid-3col">
     <div class="form-group">
         <label for="city" class="form-label">Cidade</label>
         <input type="text" id="city" name="city" class="form-control" value="<?php echo $value('city'); ?>">
+        <small class="form-text">Opcional. Cidade principal do cliente.</small>
     </div>
     <div class="form-group">
         <label for="state" class="form-label">UF</label>
         <input type="text" id="state" name="state" class="form-control" value="<?php echo $value('state', 'SP'); ?>" maxlength="2">
+        <small class="form-text">Sigla do estado, como SP.</small>
     </div>
     <div class="form-group">
         <label for="status" class="form-label required">Status</label>
@@ -67,6 +76,7 @@ $selected = static function ($actual, $expected): string {
             <option value="active" <?php echo $selected($customer['status'] ?? 'active', 'active'); ?>>Ativo</option>
             <option value="inactive" <?php echo $selected($customer['status'] ?? '', 'inactive'); ?>>Inativo</option>
         </select>
+        <small class="form-text">Inativo fica fora de novas vendas, mas preserva historico.</small>
     </div>
 </div>
 
@@ -76,9 +86,11 @@ $selected = static function ($actual, $expected): string {
             <input type="checkbox" name="credit_enabled" class="form-check-input" <?php echo !empty($customer['credit_enabled']) ? 'checked' : ''; ?>>
             <span class="form-check-label">Permitir crediario</span>
         </label>
+        <small class="form-text">Habilita venda a prazo para este cliente.</small>
     </div>
     <div class="form-group">
         <label for="credit_limit" class="form-label">Limite de credito</label>
         <input type="number" id="credit_limit" name="credit_limit" class="form-control" value="<?php echo $value('credit_limit', '0.00'); ?>" min="0" step="0.01">
+        <small class="form-text">Valor maximo em aberto no crediario.</small>
     </div>
 </div>

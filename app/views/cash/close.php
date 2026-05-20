@@ -28,24 +28,6 @@ require_once APP_PATH . '/views/templates/header.php';
                             <label for="close_notes" class="form-label">Observacoes</label>
                             <textarea id="close_notes" name="close_notes" class="form-control" rows="3"></textarea>
                         </div>
-                        <?php if (hasPermission('admin')): ?>
-                            <div class="form-group">
-                                <label for="reauth_password" class="form-label">Confirme sua senha se houver falta acima do limite</label>
-                                <input type="password" id="reauth_password" name="reauth_password" class="form-control" autocomplete="current-password">
-                            </div>
-                        <?php else: ?>
-                            <div class="form-section-title">Autorizacao para falta acima do limite</div>
-                            <div class="form-grid-2col">
-                                <div class="form-group">
-                                    <label for="approval_email" class="form-label">Email do administrador</label>
-                                    <input type="email" id="approval_email" name="approval_email" class="form-control" autocomplete="username">
-                                </div>
-                                <div class="form-group">
-                                    <label for="approval_password" class="form-label">Senha do administrador</label>
-                                    <input type="password" id="approval_password" name="approval_password" class="form-control" autocomplete="current-password">
-                                </div>
-                            </div>
-                        <?php endif; ?>
                         <div class="form-actions">
                             <a href="index.php?page=cash" class="btn btn-secondary">Cancelar</a>
                             <button type="submit" class="btn btn-warning">Fechar Caixa</button>

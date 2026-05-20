@@ -27,16 +27,29 @@ class PosController {
     public function searchProduct(): void {
         Security::checkPermissions('seller');
         $q = sanitize($_GET['q'] ?? '');
+        $params = [];
+        $where = ["(p.status = 'active' OR (p.status = 'discontinued' AND p.quantity > 0))"];
+        if ($q !== '') {
+            $where[] = '(p.name LIKE ? OR p.sku LIKE ? OR p.brand LIKE ?)';
+            array_push($params, "%$q%", "%$q%", "%$q%");
+        }
+
+        $orderBy = $q !== ''
+            ? 'CASE WHEN p.sku = ? THEN 0 WHEN p.sku LIKE ? THEN 1 WHEN p.name LIKE ? THEN 2 ELSE 3 END, p.name ASC'
+            : 'COALESCE(p.updated_at, p.created_at) DESC, p.name ASC';
+        if ($q !== '') {
+            array_push($params, $q, "$q%", "$q%");
+        }
+
         $stmt = $this->pdo->prepare("
-            SELECT p.id, p.sku, p.name, p.unit_of_measure, p.quantity,
+            SELECT p.id, p.sku AS barcode, p.name, p.unit_of_measure, p.quantity,
                    p.sale_price, p.wholesale_price
             FROM products p
-            WHERE (p.status = 'active' OR (p.status = 'discontinued' AND p.quantity > 0))
-              AND (p.name LIKE ? OR p.sku LIKE ?)
-            ORDER BY p.name ASC
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY $orderBy
             LIMIT 20
         ");
-        $stmt->execute(["%$q%", "%$q%"]);
+        $stmt->execute($params);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($stmt->fetchAll(), JSON_UNESCAPED_UNICODE);
     }
@@ -59,9 +72,6 @@ class PosController {
         $customerId = (int) ($_POST['customer_id'] ?? 1);
         $overallDiscount = normalizeMoney($_POST['overall_discount'] ?? 0);
         $notes = sanitize($_POST['notes'] ?? '');
-        $approvalEmail = strtolower(trim(filter_var($_POST['approval_email'] ?? '', FILTER_SANITIZE_EMAIL)));
-        $approvalPassword = $_POST['approval_password'] ?? '';
-        $confirmBelowCost = ($_POST['confirm_below_cost'] ?? '') === '1';
 
         if (!is_array($items) || count($items) === 0) {
             setFlashMessage('error', 'Adicione ao menos um item para finalizar a venda.');
@@ -106,14 +116,14 @@ class PosController {
                 if ($discountPercent > 100) {
                     throw new RuntimeException('Desconto de item invalido.');
                 }
-                $this->assertDiscountAuthority($discountPercent, $approvalEmail, $approvalPassword);
+                $this->assertDiscountAuthority($discountPercent);
                 $lineSubtotal = round($unitPrice * $quantity, 2);
                 $lineDiscount = round($lineSubtotal * ($discountPercent / 100), 2);
                 $lineTotal = round($lineSubtotal - $lineDiscount, 2);
 
                 if ((float) $product['quantity'] < $quantity) {
-                    if (!$this->hasAuthority('admin', $approvalEmail, $approvalPassword) || ($_POST['confirm_negative_stock'] ?? '') !== '1') {
-                        throw new RuntimeException('Estoque insuficiente para ' . $product['name'] . '. Disponivel: ' . formatQuantity($product['quantity']) . '. Venda sem estoque exige autorizacao de administrador.');
+                    if (!hasPermission('admin')) {
+                        throw new RuntimeException('Estoque insuficiente para ' . $product['name'] . '. Disponivel: ' . formatQuantity($product['quantity']) . '.');
                     }
                     $negativeStockItems[] = $product['name'];
                 }
@@ -135,7 +145,7 @@ class PosController {
                 throw new RuntimeException('Desconto total invalido.');
             }
             $effectiveDiscountPercent = $subtotal > 0 ? (($itemsDiscount + $overallDiscount) / $subtotal) * 100 : 0;
-            $this->assertDiscountAuthority($effectiveDiscountPercent, $approvalEmail, $approvalPassword);
+            $this->assertDiscountAuthority($effectiveDiscountPercent);
 
             $totalBeforeOverallDiscount = max(0.01, $subtotal - $itemsDiscount);
             $allocatedOverallDiscount = 0.0;
@@ -153,11 +163,8 @@ class PosController {
                 $validatedItem['final_line_total'] = $finalLineTotal;
                 $minimumLineCost = round((float) $validatedItem['product']['cost_price'] * $validatedItem['quantity'], 2);
                 if ($finalLineTotal < $minimumLineCost) {
-                    if (!$this->hasAuthority('admin', $approvalEmail, $approvalPassword)) {
+                    if (!hasPermission('admin')) {
                         throw new RuntimeException('Desconto venderia o item ' . $validatedItem['product']['name'] . ' abaixo do custo.');
-                    }
-                    if (!$confirmBelowCost) {
-                        throw new RuntimeException('Venda abaixo do custo exige confirmacao explicita.');
                     }
                     $belowCostItems[] = $validatedItem['product']['name'];
                 }
@@ -440,23 +447,14 @@ class PosController {
         return DISCOUNT_FREE_LIMIT_PERCENT;
     }
 
-    private function assertDiscountAuthority(float $discountPercent, string $approvalEmail, string $approvalPassword): void {
+    private function assertDiscountAuthority(float $discountPercent): void {
         $discountPercent = round($discountPercent, 4);
         if ($discountPercent <= $this->maxDiscountAllowed()) {
             return;
         }
 
         $requiredRole = $discountPercent > DISCOUNT_MANAGER_LIMIT_PERCENT ? 'admin' : 'manager';
-        if (!$this->hasAuthority($requiredRole, $approvalEmail, $approvalPassword)) {
-            throw new RuntimeException('Desconto acima da alcada exige autorizacao de ' . ($requiredRole === 'admin' ? 'administrador.' : 'gerente.'));
-        }
-    }
-
-    private function hasAuthority(string $requiredRole, string $approvalEmail, string $approvalPassword): bool {
-        if (hasPermission($requiredRole)) {
-            return true;
-        }
-        return Security::verifyCredentialsForRole($approvalEmail, $approvalPassword, $requiredRole) !== null;
+        throw new RuntimeException('Desconto acima da alcada do seu perfil. Entre com um usuario ' . ($requiredRole === 'admin' ? 'administrador' : 'gerente') . ' para aplicar esse desconto.');
     }
 
     private function customerOpenStoreCredit(int $customerId): float {

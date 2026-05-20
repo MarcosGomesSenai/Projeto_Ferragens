@@ -51,11 +51,11 @@ require_once APP_PATH . '/views/templates/header.php';
                 <div class="stat-card <?php echo $stats['low_stock_count'] > 0 ? 'warning' : 'success'; ?>">
                     <div class="stat-header">
                         <div>
-                            <div class="stat-label">Estoque critico</div>
+                            <div class="stat-label">Abaixo do minimo</div>
                             <div class="stat-value"><?php echo formatNumber($stats['critical_stock_count']); ?></div>
                         </div>
                     </div>
-                    <div class="stat-description"><?php echo formatNumber($stats['low_stock_count']); ?> produto(s) abaixo do minimo</div>
+                    <div class="stat-description"><?php echo formatNumber($stats['low_stock_count']); ?> produto(s) para reposicao</div>
                 </div>
 
                 <div class="stat-card <?php echo $stats['payables_7_days'] > 0 ? 'warning' : 'success'; ?>">
@@ -78,6 +78,18 @@ require_once APP_PATH . '/views/templates/header.php';
                     <div class="stat-label">Crediario vencido</div>
                     <div class="stat-value"><?php echo formatMoney($stats['overdue_credit_amount']); ?></div>
                     <div class="stat-description">Parcelas vencidas de clientes</div>
+                </div>
+
+                <div class="stat-card info">
+                    <div class="stat-label">Valor em estoque (custo)</div>
+                    <div class="stat-value"><?php echo formatMoney($stats['stock_cost_value']); ?></div>
+                    <div class="stat-description">Custo x quantidade dos produtos ativos</div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-label">Potencial de venda</div>
+                    <div class="stat-value"><?php echo formatMoney($stats['stock_sale_potential']); ?></div>
+                    <div class="stat-description">Venda x quantidade; margem potencial <?php echo formatMoney($stats['stock_potential_margin']); ?></div>
                 </div>
             </div>
 
@@ -111,10 +123,11 @@ require_once APP_PATH . '/views/templates/header.php';
                             <thead>
                                 <tr>
                                     <th>Produto</th>
-                                    <th>SKU</th>
+                                    <th>Codigo de barras</th>
                                     <th>Estoque</th>
                                     <th>Minimo</th>
-                                    <th>Reposicao</th>
+                                    <th>Comprar</th>
+                                    <th>Situacao</th>
                                     <th>Fornecedor</th>
                                 </tr>
                             </thead>
@@ -125,7 +138,8 @@ require_once APP_PATH . '/views/templates/header.php';
                                         <td><?php echo htmlspecialchars($product['sku']); ?></td>
                                         <td><?php echo formatQuantity($product['quantity']); ?></td>
                                         <td><?php echo formatQuantity($product['min_quantity']); ?></td>
-                                        <td><?php echo formatQuantity($product['reorder_point']); ?></td>
+                                        <td><?php echo formatQuantity(productSuggestedReorderQuantity($product)); ?></td>
+                                        <td><?php echo productStockAlertText($product); ?></td>
                                         <td><?php echo htmlspecialchars($product['supplier_name'] ?? '-'); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -221,7 +235,7 @@ require_once APP_PATH . '/views/templates/header.php';
                 <div class="card-body">
                     <div class="table-container">
                         <table class="table">
-                            <thead><tr><th>Produto</th><th>SKU</th><th>Estoque</th><th>Imobilizado</th><th>Ultima movimentacao</th></tr></thead>
+                            <thead><tr><th>Produto</th><th>Codigo de barras</th><th>Estoque</th><th>Imobilizado</th><th>Ultima movimentacao</th></tr></thead>
                             <tbody>
                                 <?php foreach ($stats['stopped_products'] as $product): ?>
                                     <tr>

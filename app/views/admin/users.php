@@ -30,6 +30,7 @@ require_once APP_PATH . '/views/templates/header.php';
                             <thead>
                                 <tr>
                                     <th>Nome</th>
+                                    <th>Usuario</th>
                                     <th>Email</th>
                                     <th>Perfil</th>
                                     <th>Status</th>
@@ -42,6 +43,7 @@ require_once APP_PATH . '/views/templates/header.php';
                                 <?php foreach ($users as $user): ?>
                                 <tr>
                                     <td style="font-weight: 600;"><?php echo htmlspecialchars($user['name']); ?></td>
+                                    <td><?php echo htmlspecialchars($user['username'] ?? '-'); ?></td>
                                     <td><?php echo htmlspecialchars($user['email']); ?></td>
                                     <td>
                                         <span class="badge badge-<?php echo $user['role'] === 'admin' ? 'error' : 'info'; ?>">

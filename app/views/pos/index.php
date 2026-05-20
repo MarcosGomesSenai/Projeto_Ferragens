@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'PDV';
+$pageTitle = 'Nova Venda';
 require_once APP_PATH . '/views/templates/header.php';
 ?>
 
@@ -7,8 +7,11 @@ require_once APP_PATH . '/views/templates/header.php';
     <?php require_once APP_PATH . '/views/templates/navigation.php'; ?>
     <main class="main-content">
         <header class="topbar">
-            <div class="topbar-left"><h1 class="topbar-title">PDV</h1></div>
+            <div class="topbar-left"><h1 class="topbar-title">Nova Venda</h1></div>
             <div class="topbar-right">
+                <?php if (hasPermission('manager')): ?>
+                    <a href="index.php?page=sales" class="btn btn-secondary">Historico</a>
+                <?php endif; ?>
                 <?php if ($cashRegister): ?>
                     <span class="badge badge-success">Caixa aberto</span>
                 <?php elseif (hasPermission('seller')): ?>
@@ -29,11 +32,23 @@ require_once APP_PATH . '/views/templates/header.php';
                 <input type="hidden" name="items_json" id="items_json" value="[]">
                 <input type="hidden" name="payments_json" id="payments_json" value="[]">
 
-                <div class="pos-layout">
-                    <section class="card">
-                        <div class="card-header"><h3 class="card-title">Carrinho</h3></div>
-                        <div class="card-body">
-                            <div class="form-grid-2col">
+                <div class="pos-layout pos-terminal-layout">
+                    <section class="pos-panel pos-sale-panel">
+                        <div class="pos-panel-header">
+                            <h3>Carrinho</h3>
+                        </div>
+                        <div class="pos-panel-body">
+                            <div class="form-group pos-search-box pos-search-primary">
+                                <label for="product_search" class="form-label">Adicionar produto</label>
+                                <input type="text" id="product_search" class="form-control" placeholder="Bipar codigo de barras ou buscar por nome" autocomplete="off" autofocus>
+                                <div id="search_results" class="pos-search-results"></div>
+                            </div>
+
+                            <div id="cart_items" class="sale-items-list">
+                                <div class="sale-empty-state">Nenhum item adicionado.</div>
+                            </div>
+
+                            <div class="pos-control-bar pos-sale-options">
                                 <div class="form-group">
                                     <label for="customer_id" class="form-label">Cliente</label>
                                     <select id="customer_id" name="customer_id" class="form-control">
@@ -50,82 +65,48 @@ require_once APP_PATH . '/views/templates/header.php';
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label for="product_search" class="form-label">Adicionar produto</label>
-                                <input type="text" id="product_search" class="form-control" placeholder="Nome ou SKU" autocomplete="off">
-                                <div id="search_results" class="pos-search-results"></div>
-                            </div>
-
-                            <div class="table-container">
-                                <table class="table" id="cart-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Produto</th>
-                                            <th>Qtd.</th>
-                                            <th>Preco</th>
-                                            <th>Desc. %</th>
-                                            <th>Total</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr><td colspan="6" class="text-center">Nenhum item adicionado.</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="notes" class="form-label">Observacoes</label>
-                                <textarea id="notes" name="notes" class="form-control" rows="2"></textarea>
-                            </div>
+                            <details class="pos-extra-details">
+                                <summary>Observacoes</summary>
+                                <div class="form-group pos-notes-box">
+                                    <label for="notes" class="form-label">Observacoes da venda</label>
+                                    <textarea id="notes" name="notes" class="form-control" rows="2"></textarea>
+                                </div>
+                            </details>
                         </div>
                     </section>
 
-                    <aside class="card">
-                        <div class="card-header"><h3 class="card-title">Fechamento</h3></div>
-                        <div class="card-body">
-                            <div class="detail-grid">
-                                <div><strong>Subtotal</strong><span id="subtotal_value"><?php echo formatMoney(0); ?></span></div>
-                                <div><strong>Descontos</strong><span id="discount_value"><?php echo formatMoney(0); ?></span></div>
+                    <aside class="pos-panel pos-checkout-panel">
+                        <div class="pos-panel-header">
+                            <h3>Pagamento</h3>
+                        </div>
+                        <div class="pos-panel-body">
+                            <div class="pos-total-box">
+                                <span>Total da venda</span>
+                                <strong id="total_value"><?php echo formatMoney(0); ?></strong>
                             </div>
 
-                            <div class="text-block">
-                                <div class="stat-label">Total da venda</div>
-                                <div class="pos-total" id="total_value"><?php echo formatMoney(0); ?></div>
+                            <div class="pos-mini-totals">
+                                <div><span>Subtotal</span><strong id="subtotal_value"><?php echo formatMoney(0); ?></strong></div>
+                                <div><span>Desconto</span><strong id="discount_value"><?php echo formatMoney(0); ?></strong></div>
                             </div>
 
-                            <div class="form-section-title">Pagamentos</div>
+                            <div class="payment-shortcuts" id="payment_shortcuts">
+                                <button type="button" class="btn btn-secondary btn-sm" data-pay-method="cash">Dinheiro</button>
+                                <button type="button" class="btn btn-secondary btn-sm" data-pay-method="pix">Pix</button>
+                                <button type="button" class="btn btn-secondary btn-sm" data-pay-method="debit_card">Debito</button>
+                                <button type="button" class="btn btn-secondary btn-sm" data-pay-method="credit_card">Credito</button>
+                            </div>
                             <div id="payment_rows"></div>
                             <div class="form-actions form-actions-left">
-                                <button type="button" class="btn btn-secondary btn-sm" id="add_payment_btn">Adicionar pagamento</button>
+                                <button type="button" class="btn btn-outline btn-sm" id="add_payment_btn">Dividir</button>
                             </div>
 
-                            <div class="form-section-title">Autorizacao de desconto</div>
-                            <div class="form-grid-2col">
-                                <div class="form-group">
-                                    <label for="approval_email" class="form-label">Email autorizador</label>
-                                    <input type="email" id="approval_email" name="approval_email" class="form-control" autocomplete="username">
-                                </div>
-                                <div class="form-group">
-                                    <label for="approval_password" class="form-label">Senha autorizador</label>
-                                    <input type="password" id="approval_password" name="approval_password" class="form-control" autocomplete="current-password">
-                                </div>
-                            </div>
-                            <label class="checkbox-row">
-                                <input type="checkbox" name="confirm_below_cost" value="1">
-                                <span>Confirmar venda abaixo do custo quando autorizada</span>
-                            </label>
-                            <label class="checkbox-row">
-                                <input type="checkbox" name="confirm_negative_stock" value="1">
-                                <span>Confirmar venda sem estoque quando autorizada</span>
-                            </label>
-
-                            <div class="detail-grid" style="margin-top: var(--space-4);">
-                                <div><strong>Pago</strong><span id="paid_value"><?php echo formatMoney(0); ?></span></div>
-                                <div><strong>Troco</strong><span id="change_value"><?php echo formatMoney(0); ?></span></div>
+                            <div class="pos-mini-totals pos-payment-result">
+                                <div><span>Pago</span><strong id="paid_value"><?php echo formatMoney(0); ?></strong></div>
+                                <div><span>Troco</span><strong id="change_value"><?php echo formatMoney(0); ?></strong></div>
                             </div>
 
-                            <div class="form-actions">
+                            <div class="pos-final-actions">
                                 <button type="button" class="btn btn-secondary" id="suspend_sale_btn">Suspender</button>
                                 <button type="button" class="btn btn-outline" id="resume_sale_btn">Retomar</button>
                                 <button type="submit" class="btn btn-success" <?php echo !$cashRegister ? 'disabled' : ''; ?>>Finalizar Venda</button>
@@ -138,18 +119,19 @@ require_once APP_PATH . '/views/templates/header.php';
     </main>
 </div>
 
-<script nonce="<?php echo $cspNonce ?? ''; ?>">
+<script nonce="<?php echo htmlspecialchars(defined('CSP_NONCE') ? CSP_NONCE : '', ENT_QUOTES, 'UTF-8'); ?>">
 const currentUserId = <?php echo (int) ($_SESSION['user_id'] ?? 0); ?>;
 
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('product_search');
     const resultsBox = document.getElementById('search_results');
-    const cartTableBody = document.querySelector('#cart-table tbody');
+    const cartItemsBox = document.getElementById('cart_items');
     const customerSelect = document.getElementById('customer_id');
     const discountInput = document.getElementById('overall_discount');
     const itemsInput = document.getElementById('items_json');
     const paymentsInput = document.getElementById('payments_json');
     const paymentRows = document.getElementById('payment_rows');
+    const paymentShortcuts = document.getElementById('payment_shortcuts');
     const addPaymentBtn = document.getElementById('add_payment_btn');
     const subtotalValue = document.getElementById('subtotal_value');
     const discountValue = document.getElementById('discount_value');
@@ -162,9 +144,14 @@ document.addEventListener('DOMContentLoaded', function () {
     let cart = [];
     let payments = [];
     let searchTimer = null;
+    let autoFillPayment = true;
 
     function formatMoney(value) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+    }
+
+    function moneyValue(value) {
+        return (parseFloat(value) || 0).toFixed(2);
     }
 
     function escapeHtml(value) {
@@ -181,24 +168,102 @@ document.addEventListener('DOMContentLoaded', function () {
         return customerSelect.options[customerSelect.selectedIndex]?.dataset.type || 'retail';
     }
 
+    function normalizeBarcode(value) {
+        return String(value ?? '').replace(/\D/g, '');
+    }
+
+    function productBarcode(product) {
+        return product.barcode || product.sku || '';
+    }
+
+    function cartSubtotal() {
+        return cart.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+    }
+
+    function cartItemDiscount() {
+        return cart.reduce((sum, item) => sum + ((item.unit_price * item.quantity) * (item.discount_percent / 100)), 0);
+    }
+
+    function saleTotal() {
+        const overallDiscount = parseFloat(discountInput.value) || 0;
+        return Math.max(0, cartSubtotal() - cartItemDiscount() - overallDiscount);
+    }
+
+    function ensurePrimaryPayment() {
+        if (!payments.length) {
+            payments.push({ payment_method: 'cash', amount: moneyValue(saleTotal()), installments: 1 });
+        }
+    }
+
+    function fillPaymentWithTotal(index = 0) {
+        ensurePrimaryPayment();
+        if (!payments[index]) return;
+        payments[index].amount = moneyValue(saleTotal());
+        renderPayments();
+    }
+
+    function setPrimaryPayment(method) {
+        ensurePrimaryPayment();
+        payments[0].payment_method = method;
+        payments[0].amount = moneyValue(saleTotal());
+        if (method !== 'credit_card' && method !== 'store_credit') {
+            payments[0].installments = 1;
+        }
+        renderPayments();
+    }
+
+    function refreshPaymentButtons() {
+        const method = payments[0]?.payment_method || 'cash';
+        paymentShortcuts.querySelectorAll('[data-pay-method]').forEach(button => {
+            button.classList.toggle('is-active', button.dataset.payMethod === method);
+        });
+    }
+
+    function paymentMethodOptions(selected) {
+        return `
+            <option value="cash" ${selected === 'cash' ? 'selected' : ''}>Dinheiro</option>
+            <option value="debit_card" ${selected === 'debit_card' ? 'selected' : ''}>Debito</option>
+            <option value="credit_card" ${selected === 'credit_card' ? 'selected' : ''}>Credito</option>
+            <option value="pix" ${selected === 'pix' ? 'selected' : ''}>Pix</option>
+            <option value="store_credit" ${selected === 'store_credit' ? 'selected' : ''}>Crediario</option>
+            <option value="customer_credit" ${selected === 'customer_credit' ? 'selected' : ''}>Credito do Cliente</option>
+        `;
+    }
+
     function refreshCart() {
         if (!cart.length) {
-            cartTableBody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum item adicionado.</td></tr>';
+            cartItemsBox.innerHTML = '<div class="sale-empty-state">Nenhum item adicionado.</div>';
         } else {
-            cartTableBody.innerHTML = cart.map((item, index) => {
+            cartItemsBox.innerHTML = cart.map((item, index) => {
                 const lineTotal = (item.unit_price * item.quantity) * (1 - (item.discount_percent / 100));
                 return `
-                    <tr>
-                        <td>
-                            <strong>${escapeHtml(item.name)}</strong>
-                            <small class="muted-line">${escapeHtml(item.sku)} | estoque ${escapeHtml(item.quantity_available)}</small>
-                        </td>
-                        <td><input type="number" min="0.001" step="0.001" value="${item.quantity}" data-index="${index}" data-field="quantity" class="form-control"></td>
-                        <td><input type="number" min="0" step="0.01" value="${item.unit_price.toFixed(2)}" data-index="${index}" data-field="unit_price" class="form-control" readonly></td>
-                        <td><input type="number" min="0" step="0.01" value="${item.discount_percent.toFixed(2)}" data-index="${index}" data-field="discount_percent" class="form-control"></td>
-                        <td>${formatMoney(lineTotal)}</td>
-                        <td><button type="button" class="btn btn-sm btn-danger" data-remove="${index}">Remover</button></td>
-                    </tr>
+                    <div class="sale-item" data-index="${index}">
+                        <div class="sale-item-main">
+                            <div class="sale-item-product">
+                                <strong>${escapeHtml(item.name)}</strong>
+                                <small class="muted-line">${escapeHtml(item.barcode)} | estoque ${escapeHtml(item.quantity_available)}</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-danger sale-remove-btn" data-remove="${index}" title="Remover item">X</button>
+                        </div>
+                        <div class="sale-item-fields">
+                            <label class="sale-field">
+                                <span>Quantidade</span>
+                                <div class="quantity-stepper">
+                                    <button type="button" class="qty-step-btn" data-qty-step="-1" data-index="${index}">-</button>
+                                    <input type="number" min="0.001" step="0.001" value="${item.quantity}" data-index="${index}" data-field="quantity" class="form-control sale-number-input">
+                                    <button type="button" class="qty-step-btn" data-qty-step="1" data-index="${index}">+</button>
+                                </div>
+                            </label>
+                            <label class="sale-field">
+                                <span>Preco</span>
+                                <input type="number" min="0" step="0.01" value="${item.unit_price.toFixed(2)}" data-index="${index}" data-field="unit_price" class="form-control sale-number-input" readonly>
+                            </label>
+                            <div class="sale-field sale-line-total">
+                                <span>Total</span>
+                                <strong data-line-total="${index}">${formatMoney(lineTotal)}</strong>
+                            </div>
+                        </div>
+                    </div>
                 `;
             }).join('');
         }
@@ -207,10 +272,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function refreshTotals() {
-        const subtotal = cart.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
-        const itemDiscount = cart.reduce((sum, item) => sum + ((item.unit_price * item.quantity) * (item.discount_percent / 100)), 0);
+        const subtotal = cartSubtotal();
+        const itemDiscount = cartItemDiscount();
         const overallDiscount = parseFloat(discountInput.value) || 0;
-        const total = Math.max(0, subtotal - itemDiscount - overallDiscount);
+        const total = saleTotal();
+        if (autoFillPayment && payments.length === 1) {
+            payments[0].amount = moneyValue(total);
+            const amountInput = paymentRows.querySelector('[data-payment-field="amount"][data-index="0"]');
+            if (amountInput && document.activeElement !== amountInput) {
+                amountInput.value = payments[0].amount;
+            }
+        }
         const paid = payments.reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0);
         const cashPaid = payments
             .filter(payment => payment.payment_method === 'cash')
@@ -226,11 +298,12 @@ document.addEventListener('DOMContentLoaded', function () {
         paymentsInput.value = JSON.stringify(payments);
     }
 
-    function updateCartRowTotal(index, row) {
-        if (!row || !cart[index]) return;
+    function updateCartItemTotal(index) {
+        if (!cart[index]) return;
         const lineTotal = (cart[index].unit_price * cart[index].quantity) * (1 - (cart[index].discount_percent / 100));
-        if (row.cells[4]) {
-            row.cells[4].textContent = formatMoney(lineTotal);
+        const totalNode = cartItemsBox.querySelector(`[data-line-total="${index}"]`);
+        if (totalNode) {
+            totalNode.textContent = formatMoney(lineTotal);
         }
     }
 
@@ -245,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             cart.push({
                 product_id: Number(product.id),
-                sku: product.sku,
+                barcode: productBarcode(product),
                 name: product.name,
                 unit_price: price,
                 retail_price: retail,
@@ -260,9 +333,44 @@ document.addEventListener('DOMContentLoaded', function () {
         resultsBox.innerHTML = '';
     }
 
+    function showSearchMessage(message, type = 'info') {
+        resultsBox.innerHTML = `<div class="pos-search-message pos-search-message-${type}">${escapeHtml(message)}</div>`;
+    }
+
+    async function fetchProducts(query, render = true) {
+        try {
+            const response = await fetch('index.php?page=products&action=search&q=' + encodeURIComponent(query), {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            const products = await response.json();
+            const list = Array.isArray(products) ? products : [];
+            if (render) {
+                renderResults(list);
+            }
+            return list;
+        } catch (error) {
+            showSearchMessage('Nao foi possivel buscar produtos. Recarregue a pagina e tente novamente.', 'error');
+            return [];
+        }
+    }
+
+    function findDirectProduct(products, query) {
+        const normalizedQuery = normalizeBarcode(query);
+        if (normalizedQuery !== '') {
+            const exactBarcode = products.find(product => normalizeBarcode(productBarcode(product)) === normalizedQuery);
+            if (exactBarcode) {
+                return exactBarcode;
+            }
+        }
+        return products.length === 1 ? products[0] : null;
+    }
+
     function renderResults(products) {
         if (!products.length) {
-            resultsBox.innerHTML = '';
+            showSearchMessage('Nenhum produto encontrado para esta busca.', 'empty');
             return;
         }
         resultsBox.innerHTML = products.map(product => {
@@ -270,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return `
                 <button type="button" class="pos-result" data-product="${encodeURIComponent(JSON.stringify(product))}">
                     <strong>${escapeHtml(product.name)}</strong>
-                    <small class="muted-line">${escapeHtml(product.sku)} | estoque ${escapeHtml(product.quantity)} | ${formatMoney(parseFloat(price))}</small>
+                    <small class="muted-line">${escapeHtml(productBarcode(product))} | estoque ${escapeHtml(product.quantity)} | ${formatMoney(parseFloat(price))}</small>
                 </button>
             `;
         }).join('');
@@ -278,51 +386,81 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function addPaymentRow(payment = { payment_method: 'cash', amount: 0, installments: 1 }) {
         payments.push(payment);
+        if (payments.length > 1) {
+            autoFillPayment = false;
+        }
         renderPayments();
     }
 
     function renderPayments() {
-        paymentRows.innerHTML = payments.map((payment, index) => `
-            <div class="form-grid-3col" data-payment-index="${index}">
+        paymentRows.innerHTML = payments.map((payment, index) => {
+            const canInstallments = payment.payment_method === 'credit_card' || payment.payment_method === 'store_credit';
+            const canRemove = payments.length > 1;
+            const methodControl = canRemove ? `
                 <div class="form-group">
                     <label class="form-label">Forma</label>
                     <select class="form-control" data-payment-field="payment_method" data-index="${index}">
-                        <option value="cash" ${payment.payment_method === 'cash' ? 'selected' : ''}>Dinheiro</option>
-                        <option value="debit_card" ${payment.payment_method === 'debit_card' ? 'selected' : ''}>Debito</option>
-                        <option value="credit_card" ${payment.payment_method === 'credit_card' ? 'selected' : ''}>Credito</option>
-                        <option value="pix" ${payment.payment_method === 'pix' ? 'selected' : ''}>Pix</option>
-                        <option value="store_credit" ${payment.payment_method === 'store_credit' ? 'selected' : ''}>Crediario</option>
-                        <option value="customer_credit" ${payment.payment_method === 'customer_credit' ? 'selected' : ''}>Credito do Cliente</option>
+                        ${paymentMethodOptions(payment.payment_method)}
                     </select>
                 </div>
+            ` : '';
+            return `
+            <div class="payment-row simple-payment-row ${canRemove ? 'is-split' : 'is-single'}" data-payment-index="${index}">
+                ${methodControl}
                 <div class="form-group">
                     <label class="form-label">Valor</label>
-                    <input type="number" min="0" step="0.01" class="form-control" data-payment-field="amount" data-index="${index}" value="${payment.amount}">
+                    <div class="payment-amount-row">
+                        <input type="number" min="0" step="0.01" class="form-control" data-payment-field="amount" data-index="${index}" value="${moneyValue(payment.amount)}">
+                        <button type="button" class="btn btn-sm btn-outline" data-fill-payment="${index}">Total</button>
+                    </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group ${canInstallments ? '' : 'hidden'}">
                     <label class="form-label">Parcelas</label>
                     <div class="table-actions">
                         <input type="number" min="1" max="12" step="1" class="form-control" data-payment-field="installments" data-index="${index}" value="${payment.installments}">
-                        <button type="button" class="btn btn-sm btn-danger" data-remove-payment="${index}">Remover</button>
+                        ${canRemove ? `<button type="button" class="btn btn-sm btn-danger" data-remove-payment="${index}">Remover</button>` : ''}
                     </div>
                 </div>
+                <div class="form-group ${canInstallments || !canRemove ? 'hidden' : ''}">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-sm btn-danger payment-remove-btn" data-remove-payment="${index}">Remover</button>
+                </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
         refreshTotals();
+        refreshPaymentButtons();
     }
 
     searchInput.addEventListener('input', function () {
         clearTimeout(searchTimer);
         const query = searchInput.value.trim();
-        if (query.length < 2) {
-            resultsBox.innerHTML = '';
+        searchTimer = setTimeout(async function () {
+            await fetchProducts(query);
+        }, 250);
+    });
+
+    searchInput.addEventListener('keydown', async function (event) {
+        if (event.key !== 'Enter') {
             return;
         }
-        searchTimer = setTimeout(async function () {
-            const response = await fetch('index.php?page=products&action=search&q=' + encodeURIComponent(query));
-            const products = await response.json();
-            renderResults(products);
-        }, 250);
+        event.preventDefault();
+        clearTimeout(searchTimer);
+        const query = searchInput.value.trim();
+        if (query === '') {
+            return;
+        }
+        const products = await fetchProducts(query);
+        const product = findDirectProduct(products, query);
+        if (product) {
+            addToCart(product);
+        }
+    });
+
+    searchInput.addEventListener('focus', function () {
+        if (searchInput.value.trim() === '' && resultsBox.innerHTML.trim() === '') {
+            fetchProducts('');
+        }
     });
 
     resultsBox.addEventListener('click', function (event) {
@@ -332,19 +470,27 @@ document.addEventListener('DOMContentLoaded', function () {
         addToCart(product);
     });
 
-    cartTableBody.addEventListener('input', function (event) {
+    cartItemsBox.addEventListener('input', function (event) {
         const field = event.target.dataset.field;
         const index = Number(event.target.dataset.index);
         if (field === undefined || Number.isNaN(index) || !cart[index]) return;
         cart[index][field] = parseFloat(event.target.value) || 0;
-        updateCartRowTotal(index, event.target.closest('tr'));
+        updateCartItemTotal(index);
         refreshTotals();
     });
 
-    cartTableBody.addEventListener('click', function (event) {
-        const index = Number(event.target.dataset.remove);
-        if (Number.isNaN(index)) return;
-        cart.splice(index, 1);
+    cartItemsBox.addEventListener('click', function (event) {
+        const removeIndex = Number(event.target.dataset.remove);
+        if (!Number.isNaN(removeIndex)) {
+            cart.splice(removeIndex, 1);
+            refreshCart();
+            return;
+        }
+
+        const step = Number(event.target.dataset.qtyStep);
+        const index = Number(event.target.dataset.index);
+        if (Number.isNaN(step) || Number.isNaN(index) || !cart[index]) return;
+        cart[index].quantity = Math.max(0.001, (parseFloat(cart[index].quantity) || 0) + step);
         refreshCart();
     });
 
@@ -353,6 +499,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const index = Number(event.target.dataset.index);
         if (field === undefined || Number.isNaN(index) || !payments[index]) return;
         payments[index][field] = field === 'payment_method' ? event.target.value : (parseFloat(event.target.value) || 0);
+        if (field === 'amount') {
+            autoFillPayment = false;
+        }
         if (field === 'payment_method' && payments[index][field] !== 'credit_card' && payments[index][field] !== 'store_credit') {
             payments[index].installments = 1;
             renderPayments();
@@ -366,14 +515,31 @@ document.addEventListener('DOMContentLoaded', function () {
         const index = Number(event.target.dataset.index);
         if (field === undefined || Number.isNaN(index) || !payments[index]) return;
         payments[index][field] = field === 'payment_method' ? event.target.value : (parseFloat(event.target.value) || 0);
+        if (field === 'amount') {
+            autoFillPayment = false;
+        }
         renderPayments();
     });
 
     paymentRows.addEventListener('click', function (event) {
+        const fillIndex = Number(event.target.dataset.fillPayment);
+        if (!Number.isNaN(fillIndex)) {
+            autoFillPayment = payments.length === 1;
+            fillPaymentWithTotal(fillIndex);
+            return;
+        }
         const index = Number(event.target.dataset.removePayment);
         if (Number.isNaN(index)) return;
         payments.splice(index, 1);
+        ensurePrimaryPayment();
         renderPayments();
+    });
+
+    paymentShortcuts.addEventListener('click', function (event) {
+        const method = event.target.dataset.payMethod;
+        if (!method) return;
+        autoFillPayment = true;
+        setPrimaryPayment(method);
     });
 
     customerSelect.addEventListener('change', function () {
@@ -385,7 +551,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     discountInput.addEventListener('input', refreshTotals);
-    addPaymentBtn.addEventListener('click', function () { addPaymentRow(); });
+    addPaymentBtn.addEventListener('click', function () {
+        autoFillPayment = false;
+        addPaymentRow();
+    });
     suspendSaleBtn.addEventListener('click', function () {
         sessionStorage.setItem('suspended_sale_user_' + currentUserId, JSON.stringify({
             cart,
@@ -395,8 +564,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }));
         cart = [];
         payments = [];
+        autoFillPayment = true;
         discountInput.value = '0.00';
-        addPaymentRow({ payment_method: 'cash', amount: 0, installments: 1 });
+        addPaymentRow({ payment_method: 'cash', amount: moneyValue(saleTotal()), installments: 1 });
         refreshCart();
     });
     resumeSaleBtn.addEventListener('click', function () {
@@ -405,6 +575,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const sale = JSON.parse(stored);
         cart = Array.isArray(sale.cart) ? sale.cart : [];
         payments = Array.isArray(sale.payments) && sale.payments.length ? sale.payments : [{ payment_method: 'cash', amount: 0, installments: 1 }];
+        autoFillPayment = payments.length === 1;
         customerSelect.value = sale.customer_id || customerSelect.value;
         discountInput.value = sale.overall_discount || '0.00';
         sessionStorage.removeItem('suspended_sale_user_' + currentUserId);
@@ -418,6 +589,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     addPaymentRow({ payment_method: 'cash', amount: 0, installments: 1 });
     refreshCart();
+    fetchProducts('');
 });
 </script>
 

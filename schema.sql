@@ -18,6 +18,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE IF NOT EXISTS `users` (
     `id`                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `name`                 VARCHAR(150) NOT NULL,
+    `username`             VARCHAR(80) NULL DEFAULT NULL,
     `email`                VARCHAR(200) NOT NULL,
     `password_hash`        VARCHAR(255) NOT NULL,
     `role`                 ENUM('admin','manager','operator','seller') NOT NULL DEFAULT 'operator',
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `created_at`           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`           DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_users_username` (`username`),
     UNIQUE KEY `uq_users_email` (`email`),
     KEY `idx_users_role_status` (`role`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -522,8 +524,8 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- SEED
 -- ============================================================
 
-INSERT IGNORE INTO `users` (`name`, `email`, `password_hash`, `role`, `status`, `must_change_password`) VALUES
-    ('Administrador', 'admin@ferragensouza.local', '$2y$12$mCuxSpYKTVov0JHfS/.CdOl8n.RnXN5aIkfqy8PITSI/b/ynSkkxO', 'admin', 'active', 1);
+INSERT IGNORE INTO `users` (`name`, `username`, `email`, `password_hash`, `role`, `status`, `must_change_password`) VALUES
+    ('Administrador', 'FerragensSouza', 'admin@ferragensouza.local', '$2y$12$PTBMS8nDeXm5ucjU1h1UW.tAMyNCJnRlLZJ/joUNr3S5LYBDRbeky', 'admin', 'active', 0);
 
 INSERT IGNORE INTO `customers` (`id`, `document_type`, `document`, `name`, `customer_type`, `is_default`, `status`) VALUES
     (1, 'none', NULL, 'Consumidor Final', 'retail', 1, 'active');

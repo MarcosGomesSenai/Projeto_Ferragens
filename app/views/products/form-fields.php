@@ -11,55 +11,44 @@ $selected = static function ($actual, $expected): string {
 };
 
 $parentCategories = array_filter($categories, static fn($cat) => empty($cat['parent_id']));
-$subcategories = array_filter($categories, static fn($cat) => !empty($cat['parent_id']));
 ?>
 
 <div class="form-section-title">Identificacao</div>
 <div class="form-grid-2col">
     <div class="form-group">
-        <label for="sku" class="form-label">SKU</label>
-        <input type="text" id="sku" name="sku" class="form-control"
+        <label for="barcode" class="form-label">Codigo de barras</label>
+        <input type="text" id="barcode" name="barcode" class="form-control"
                value="<?php echo $value('sku'); ?>"
-               placeholder="Gerado automaticamente"
+               placeholder="Leia ou digite o codigo de barras"
                <?php echo $isEdit && $hasMovements ? 'readonly' : ''; ?>>
-        <small class="form-text">Apos movimentar estoque, o SKU fica travado.</small>
+        <small class="form-text">Apos movimentar estoque, o codigo de barras fica travado.</small>
     </div>
 
     <div class="form-group">
         <label for="brand" class="form-label">Marca</label>
         <input type="text" id="brand" name="brand" class="form-control" value="<?php echo $value('brand'); ?>">
+        <small class="form-text">Opcional. Ajuda a diferenciar produtos parecidos.</small>
     </div>
 </div>
 
 <div class="form-group">
     <label for="name" class="form-label required">Nome do Produto</label>
     <input type="text" id="name" name="name" class="form-control" value="<?php echo $value('name'); ?>" required>
+    <small class="form-text">Nome que aparecera no PDV, orcamentos, estoque e relatorios.</small>
 </div>
 
-<div class="form-grid-2col">
-    <div class="form-group">
-        <label for="category_id" class="form-label required">Categoria</label>
-        <select id="category_id" name="category_id" class="form-control" required>
-            <option value="">Selecione...</option>
-            <?php foreach ($parentCategories as $cat): ?>
-                <option value="<?php echo (int) $cat['id']; ?>" <?php echo $selected($product['category_id'] ?? '', $cat['id']); ?>>
-                    <?php echo htmlspecialchars($cat['name']); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="subcategory_id" class="form-label">Subcategoria</label>
-        <select id="subcategory_id" name="subcategory_id" class="form-control">
-            <option value="">Sem subcategoria</option>
-            <?php foreach ($subcategories as $cat): ?>
-                <option value="<?php echo (int) $cat['id']; ?>" <?php echo $selected($product['subcategory_id'] ?? '', $cat['id']); ?>>
-                    <?php echo htmlspecialchars($cat['name']); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
+<div class="form-group">
+    <label for="category_id" class="form-label required">Categoria</label>
+    <select id="category_id" name="category_id" class="form-control" required>
+        <option value="">Selecione...</option>
+        <?php foreach ($parentCategories as $cat): ?>
+            <option value="<?php echo (int) $cat['id']; ?>" <?php echo $selected($product['category_id'] ?? '', $cat['id']); ?>>
+                <?php echo htmlspecialchars($cat['name']); ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+    <input type="hidden" name="subcategory_id" value="">
+    <small class="form-text">Agrupa o produto na lista, filtros e relatorios. Subcategorias foram removidas para simplificar o cadastro.</small>
 </div>
 
 <div class="form-grid-2col">
@@ -73,6 +62,7 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
                 </option>
             <?php endforeach; ?>
         </select>
+        <small class="form-text">Opcional. Use quando souber quem fornece o produto.</small>
     </div>
 
     <div class="form-group">
@@ -85,6 +75,7 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
                 </option>
             <?php endforeach; ?>
         </select>
+        <small class="form-text">Opcional. Segunda opcao de compra para reposicao.</small>
     </div>
 </div>
 
@@ -99,6 +90,7 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
                 </option>
             <?php endforeach; ?>
         </select>
+        <small class="form-text">Unidade usada na venda e no estoque.</small>
     </div>
 
     <div class="form-group">
@@ -110,6 +102,7 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
                 </option>
             <?php endforeach; ?>
         </select>
+        <small class="form-text">Unidade usada quando o produto entra por compra ou NF.</small>
     </div>
 
     <div class="form-group">
@@ -125,11 +118,13 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
     <div class="form-group">
         <label for="initial_quantity" class="form-label">Estoque inicial</label>
         <input type="number" id="initial_quantity" name="initial_quantity" class="form-control" value="0" min="0" step="0.001">
+        <small class="form-text">Quantidade inicial ao cadastrar. Depois use Movimentacoes para alterar.</small>
     </div>
     <?php else: ?>
     <div class="form-group">
         <label class="form-label">Estoque atual</label>
         <input type="text" class="form-control" value="<?php echo formatQuantity($product['quantity'] ?? 0); ?>" readonly>
+        <small class="form-text">O estoque e alterado por venda, entrada fiscal ou movimentacao.</small>
     </div>
     <?php endif; ?>
 
@@ -137,12 +132,14 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
         <label for="min_quantity" class="form-label required">Estoque minimo</label>
         <input type="number" id="min_quantity" name="min_quantity" class="form-control"
                value="<?php echo $value('min_quantity', LOW_STOCK_THRESHOLD); ?>" min="0" step="0.001" required>
+        <small class="form-text">Quando o estoque ficar abaixo deste numero, vira alerta critico.</small>
     </div>
 
     <div class="form-group">
         <label for="reorder_point" class="form-label">Ponto de reposicao</label>
         <input type="number" id="reorder_point" name="reorder_point" class="form-control"
                value="<?php echo $value('reorder_point', '0'); ?>" min="0" step="0.001">
+        <small class="form-text">Ponto antecipado para reposicao. Deve ser igual ou maior que o minimo.</small>
     </div>
 </div>
 
@@ -152,6 +149,7 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
         <label for="cost_price" class="form-label required">Preco de custo</label>
         <input type="number" id="cost_price" name="cost_price" class="form-control"
                value="<?php echo $value('cost_price'); ?>" min="0" step="0.01" required>
+        <small class="form-text">Valor que a loja paga pelo produto.</small>
     </div>
 
     <div class="form-group">
@@ -172,6 +170,7 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
         <label for="wholesale_price" class="form-label">Preco atacado</label>
         <input type="number" id="wholesale_price" name="wholesale_price" class="form-control"
                value="<?php echo $value('wholesale_price'); ?>" min="0" step="0.01">
+        <small class="form-text">Opcional. Preco para cliente profissional/atacado.</small>
     </div>
 </div>
 
@@ -186,20 +185,23 @@ $subcategories = array_filter($categories, static fn($cat) => !empty($cat['paren
                 </option>
             <?php endforeach; ?>
         </select>
+        <small class="form-text">Ativo vende normalmente. Inativo fica fora das buscas de venda.</small>
     </div>
 </div>
 
 <div class="form-group">
     <label for="description" class="form-label">Descricao</label>
     <textarea id="description" name="description" class="form-control" rows="3"><?php echo $value('description'); ?></textarea>
+    <small class="form-text">Opcional. Detalhes tecnicos, medidas ou composicao.</small>
 </div>
 
 <div class="form-group">
     <label for="notes" class="form-label">Observacoes internas</label>
     <textarea id="notes" name="notes" class="form-control" rows="3"><?php echo $value('notes'); ?></textarea>
+    <small class="form-text">Opcional. Informacoes internas que nao precisam aparecer para o cliente.</small>
 </div>
 
-<script nonce="<?php echo $cspNonce ?? ''; ?>">
+<script nonce="<?php echo htmlspecialchars(defined('CSP_NONCE') ? CSP_NONCE : '', ENT_QUOTES, 'UTF-8'); ?>">
 document.addEventListener('DOMContentLoaded', function () {
     const cost = document.getElementById('cost_price');
     const sale = document.getElementById('sale_price');
